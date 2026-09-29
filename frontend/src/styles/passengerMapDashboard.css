@@ -1,0 +1,894 @@
+/* ==================================================
+   THEMBA Passenger Portal — auto-fit responsive CSS
+   - Map panel is a flex column with fixed bottom row
+   - Legend + stat boxes always visible
+   - Live status pill + archive styling
+   ================================================== */
+
+.pmd {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  box-sizing: border-box;
+  background: #071016;
+  color: #e8eef2;
+  overflow-x: hidden;
+}
+
+.pmd-stage-desk,
+.pmd-stage-route,
+.pmd-stage-active {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* ---------- Header ---------- */
+.pmd-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px clamp(14px, 2vw, 24px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 14, 22, 0.95);
+  flex-wrap: wrap;
+}
+.pmd-brand-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+.pmd-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #f5a524;
+  color: #1a1205;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.pmd-brand-row strong {
+  display: block;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+.pmd-brand-row small {
+  color: #8b9bb0;
+  font-size: 0.65rem;
+}
+.pmd-user-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.75rem;
+  color: #9fb0c0;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.pmd-avatar-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #1e3a5f;
+  display: grid;
+  place-items: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  flex-shrink: 0;
+}
+.pmd-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ---------- Stage wrappers ---------- */
+.pmd-desk,
+.pmd-route-wrap,
+.pmd-active-wrap {
+  flex: 1;
+  width: 100%;
+  max-width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: clamp(12px, 2vw, 24px) clamp(12px, 2vw, 24px) clamp(24px, 4vw, 40px);
+  box-sizing: border-box;
+}
+
+.pmd-desk-head,
+.pmd-active-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.pmd-desk-head h1,
+.pmd-active-head h1 {
+  margin: 0 0 6px;
+  font-size: clamp(1.15rem, 2.5vw, 1.6rem);
+  word-break: break-word;
+}
+
+/* ---------- AUTO-FIT GRIDS ---------- */
+.pmd-desk-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: clamp(10px, 1.5vw, 16px);
+  width: 100%;
+}
+
+.pmd-desk-lower {
+  margin-top: 16px;
+}
+
+.pmd-active-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(340px, 100%), 1fr));
+  gap: clamp(10px, 1.5vw, 16px);
+  width: 100%;
+  align-items: start;
+}
+
+/* ---------- Cards ---------- */
+.pmd-card {
+  background: rgba(18, 28, 36, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: clamp(12px, 1.5vw, 18px);
+  margin-bottom: 12px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.pmd-card h3 {
+  margin: 0 0 8px;
+  font-size: clamp(0.95rem, 1.4vw, 1.05rem);
+}
+.pmd-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   MAP PANEL — flex column with FIXED bottom row
+   ============================================================ */
+.pmd-map-panel {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: rgba(12, 18, 26, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: clamp(8px, 1vw, 12px);
+  overflow: hidden;
+  height: clamp(480px, 62vh, 680px);
+  min-height: 480px;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  gap: 10px;
+}
+.pmd-map-panel > .themba-map,
+.pmd-map-panel > div[style*="position: relative"] {
+  flex: 1 1 auto;
+  min-height: 260px;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0a1016;
+}
+.pmd-map-panel .themba-map > div,
+.pmd-map-panel .themba-map {
+  height: 100% !important;
+  min-height: 260px !important;
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.pmd-map-panel > .pmd-map-legend,
+.pmd-map-panel > .pmd-stat-row {
+  flex: 0 0 auto;
+}
+
+.pmd-map-legend {
+  display: flex;
+  gap: 16px;
+  font-size: 0.8rem;
+  color: #9fb0c0;
+  flex-wrap: wrap;
+  padding: 2px 4px;
+  margin: 0;
+}
+
+.pmd-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+}
+.pmd-stat {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pmd-stat small {
+  display: block;
+  font-size: 0.62rem;
+  color: #8b9bb0;
+  letter-spacing: 0.06em;
+  margin: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pmd-stat strong {
+  font-size: clamp(1rem, 1.8vw, 1.15rem);
+  color: #e6a841;
+  font-weight: 700;
+  word-break: break-word;
+  line-height: 1.2;
+}
+
+.pmd-trip-control {
+  flex: 0 0 auto;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: rgba(56, 189, 248, 0.06);
+  word-break: break-word;
+}
+.pmd-trip-control small {
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  color: #8b9bb0;
+}
+.pmd-trip-control p {
+  margin: 4px 0 0;
+}
+
+.pmd-map-badge {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 3;
+  font-size: 0.7rem;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(8, 14, 20, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  max-width: calc(100% - 40px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  pointer-events: none;
+}
+
+/* ---------- Side column ---------- */
+.pmd-active-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  width: 100%;
+}
+
+/* ---------- Booking rows ---------- */
+.pmd-booking-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+.pmd-booking-list li {
+  width: 100%;
+}
+.pmd-booking-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  box-sizing: border-box;
+  flex-wrap: wrap;
+}
+.pmd-booking-row:hover {
+  border-color: rgba(230, 168, 65, 0.4);
+}
+.pmd-booking-row.active {
+  border-color: rgba(230, 168, 65, 0.55);
+  background: rgba(230, 168, 65, 0.1);
+}
+.pmd-booking-row strong {
+  display: block;
+}
+.pmd-booking-row small {
+  color: #8b9bb0;
+  font-size: 0.75rem;
+}
+
+/* ---------- Notifications ---------- */
+.pmd-notif-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+.pmd-notif-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  word-break: break-word;
+}
+.pmd-notif-list small {
+  color: #8b9bb0;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+}
+.pmd-notif-list p {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+}
+
+/* ---------- Buttons ---------- */
+.pmd-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 0.55rem 0.9rem;
+  font: inherit;
+  cursor: pointer;
+  margin-top: 6px;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.pmd-btn.primary {
+  background: #f5a524;
+  color: #1a1205;
+  font-weight: 600;
+}
+.pmd-btn.secondary {
+  background: #1e293b;
+  color: #e8eef2;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.pmd-btn.ghost {
+  background: transparent;
+  color: #8b9bb8;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.pmd-btn.danger {
+  background: #b91c1c;
+  color: #fff;
+}
+.pmd-btn.block {
+  width: 100%;
+}
+.pmd-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.pmd-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.pmd-btn-row > .pmd-btn {
+  flex: 1 1 min(140px, 100%);
+  min-width: 0;
+}
+
+/* ---------- Labels ---------- */
+.pmd-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #8b9bb8;
+  margin-bottom: 8px;
+  width: 100%;
+}
+.pmd-label select,
+.pmd-label input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #0f172a;
+  color: #e8eef2;
+  font: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ---------- Fare ---------- */
+.pmd-fare-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 14px;
+  margin: 12px 0;
+  border-radius: 10px;
+  background: rgba(230, 168, 65, 0.12);
+  border: 1px solid rgba(230, 168, 65, 0.35);
+  color: #e6a841;
+  flex-wrap: wrap;
+  gap: 8px;
+  word-break: break-word;
+}
+.pmd-fare-block {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(245, 165, 36, 0.1);
+  margin: 8px 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pmd-fare-block span {
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  color: #f5a524;
+}
+.pmd-fare-block strong {
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  word-break: break-word;
+}
+.pmd-fare-lg {
+  font-size: clamp(1.4rem, 3vw, 1.75rem);
+  color: #e6a841;
+  display: block;
+  margin: 8px 0;
+  word-break: break-word;
+}
+
+/* ---------- Nearest ---------- */
+.pmd-nearest {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(45, 212, 191, 0.08);
+  border: 1px solid rgba(45, 212, 191, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pmd-nearest span {
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  color: #5eead4;
+  text-transform: uppercase;
+}
+.pmd-nearest strong {
+  font-size: 0.9rem;
+  color: #e8eef2;
+  word-break: break-word;
+}
+
+/* ---------- Trip list ---------- */
+.pmd-desk-results {
+  margin-top: 14px;
+  width: 100%;
+}
+.pmd-results-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pmd-trip {
+  width: 100%;
+  text-align: left;
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: inherit;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  box-sizing: border-box;
+  word-break: break-word;
+}
+.pmd-trip.is-selected {
+  border-color: #94a3b8 !important;
+  background: #f1f5f9 !important;
+  color: #0f172a;
+  box-shadow: none !important;
+  outline: 1px solid #cbd5e1;
+  transform: none !important;
+}
+.pmd-trip:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+.pmd-trip strong {
+  display: block;
+}
+.pmd-trip small {
+  color: #8b9bb8;
+}
+.pmd-trip.is-selected small {
+  color: #475569;
+}
+.pmd-trip-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+.pmd-trip.is-selected .pmd-trip-meta {
+  color: #334155;
+}
+.pmd-status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+.pmd-trip.is-selected .pmd-status {
+  background: rgba(34, 197, 94, 0.2);
+  color: #15803d;
+}
+
+/* ---------- Pills ---------- */
+.pmd-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  white-space: nowrap;
+}
+.pmd-pill.ok {
+  border-color: rgba(34, 197, 94, 0.45);
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.1);
+}
+.pmd-pill.muted {
+  opacity: 0.75;
+}
+.pmd-pill.bad {
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ---------- DL ---------- */
+.pmd-dl {
+  margin: 0;
+  width: 100%;
+}
+.pmd-dl > div {
+  margin-bottom: 10px;
+  word-break: break-word;
+}
+.pmd-dl dt {
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  color: #8b9bb0;
+  text-transform: uppercase;
+}
+.pmd-dl dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+}
+
+/* ---------- Hints ---------- */
+.pmd-hint {
+  font-size: 0.75rem;
+  color: #8b9bb0;
+  line-height: 1.4;
+  margin: 0 0 8px;
+  word-break: break-word;
+}
+.pmd-error {
+  color: #f87171;
+  font-size: 0.85rem;
+  word-break: break-word;
+}
+.pmd-muted {
+  color: #8b9bb0;
+  font-size: 0.85rem;
+}
+.pmd-kicker {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: #8b9bb0;
+  margin: 0 0 4px;
+  word-break: break-word;
+}
+
+/* ---------- Modals ---------- */
+.pmd-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: grid;
+  place-items: center;
+  z-index: 100;
+  padding: 16px;
+  box-sizing: border-box;
+}
+.pmd-modal {
+  background: #111827;
+  border-radius: 12px;
+  padding: clamp(16px, 2.5vw, 24px);
+  max-width: min(420px, 100%);
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-sizing: border-box;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.pmd-modal h3 {
+  margin: 0 0 8px;
+  word-break: break-word;
+}
+.pmd-modal p {
+  color: #8b9bb0;
+  font-size: 0.9rem;
+  margin: 0 0 16px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+.pmd-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+.pmd-modal-actions .pmd-btn {
+  flex: 0 1 auto;
+  min-width: 100px;
+}
+.pmd-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #0f172a;
+  color: #e8eef2;
+  font: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+}
+.pmd-input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #0f172a;
+  color: #e8eef2;
+  font: inherit;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+/* ---------- Live sync indicator ---------- */
+.pmd-live-sync {
+  font-size: 0.65rem;
+  color: #8b9bb0;
+  margin-left: 8px;
+}
+
+/* ---------- Notifications section ---------- */
+.pmd-notif-section-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8b9bb0;
+  margin: 12px 0 6px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+.pmd-notif-section-label:first-of-type {
+  margin-top: 4px;
+}
+.pmd-notif-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(230, 168, 65, 0.18);
+  color: #e6a841;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.pmd-notif-list strong {
+  display: block;
+  font-size: 0.85rem;
+  color: #e8eef2;
+  margin: 2px 0 4px;
+}
+.pmd-notif-list li.pmd-notif.unread {
+  border-left: 2px solid #e6a841;
+  padding-left: 10px;
+  background: rgba(230, 168, 65, 0.04);
+}
+
+/* ==================================================
+   BREAKPOINTS
+   ================================================== */
+@media (max-width: 900px) {
+  .pmd-active-grid {
+    grid-template-columns: 1fr;
+  }
+  .pmd-map-panel {
+    height: clamp(420px, 58vh, 580px);
+    min-height: 420px;
+  }
+  .pmd-map-panel .themba-map > div,
+  .pmd-map-panel .themba-map {
+    min-height: 220px !important;
+  }
+  .pmd-stat-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .pmd-desk-grid,
+  .pmd-desk-lower {
+    grid-template-columns: 1fr;
+  }
+  .pmd-user-chip {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .pmd-topbar {
+    padding: 10px 14px;
+  }
+}
+
+@media (max-width: 600px) {
+  .pmd-map-panel {
+    height: clamp(400px, 58vh, 520px);
+    min-height: 400px;
+  }
+  .pmd-stat-row {
+    grid-template-columns: 1fr;
+  }
+  .pmd-stat {
+    padding: 8px 10px;
+  }
+  .pmd-stat small {
+    font-size: 0.58rem;
+  }
+  .pmd-stat strong {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .pmd-desk,
+  .pmd-route-wrap,
+  .pmd-active-wrap {
+    padding: 12px 10px 24px;
+  }
+  .pmd-modal {
+    padding: 16px;
+    border-radius: 10px;
+  }
+  .pmd-modal-actions {
+    flex-direction: column;
+  }
+  .pmd-modal-actions .pmd-btn {
+    width: 100%;
+    min-width: 0;
+  }
+  .pmd-btn-row > .pmd-btn {
+    flex: 1 1 100%;
+  }
+  .pmd-trip-meta {
+    font-size: 0.7rem;
+  }
+  .pmd-map-panel {
+    height: 400px;
+    min-height: 400px;
+  }
+  .pmd-map-panel .themba-map > div,
+  .pmd-map-panel .themba-map {
+    min-height: 200px !important;
+  }
+  .pmd-booking-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .pmd-booking-row > span:last-child {
+    text-align: center;
+    width: 100%;
+  }
+}
+
+@media (max-width: 360px) {
+  .pmd-brand-row strong {
+    font-size: 0.75rem;
+  }
+  .pmd-brand-row small {
+    font-size: 0.55rem;
+  }
+  .pmd-user-chip {
+    font-size: 0.65rem;
+    padding: 4px 8px;
+  }
+  .pmd-card {
+    padding: 10px;
+  }
+  .pmd-map-panel {
+    height: 380px;
+    min-height: 380px;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  .pmd-map-panel {
+    height: 300px;
+    min-height: 300px;
+  }
+  .pmd-map-panel .themba-map > div,
+  .pmd-map-panel .themba-map {
+    min-height: 180px !important;
+  }
+  .pmd-stat-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.pmd img,
+.pmd svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.pmd code,
+.pmd .pmd-code {
+  word-break: break-all;
+}

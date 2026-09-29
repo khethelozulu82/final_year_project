@@ -1,0 +1,9 @@
+# Assigns default reviewers automatically when files in a path are changed.
+# Replace with actual GitHub usernames once the team is set up.
+#
+# Format: <path>  @username1 @username2
+#
+# Examples:
+# /src/backend/   @backend-lead-handle
+# /src/frontend/  @frontend-lead-handle
+# /docs/          @docs-owner-handle

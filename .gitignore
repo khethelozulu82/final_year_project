@@ -1,0 +1,51 @@
+# --- OS files ---
+.DS_Store
+Thumbs.db
+
+# --- IDE / editor ---
+.vscode/
+.idea/
+*.swp
+
+# --- Environment / secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+venv/
+.venv/
+env/
+.ipynb_checkpoints/
+
+# --- Django ---
+*.sqlite3
+*.sqlite3-journal
+/backend/staticfiles/
+/backend/media/
+local_settings.py
+
+# --- Node / JS ---
+node_modules/
+dist/
+build/
+npm-debug.log*
+yarn-error.log*
+.next/
+
+# --- Vite ---
+.vite/
+*.local
+
+# --- Logs ---
+*.log
+# Env / secrets
+.env
+.env.*
+!.env.example
+

@@ -1,0 +1,150 @@
+.adm-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px 20px 40px;
+  color: #e7e5e4;
+}
+.adm-header h1 {
+  margin: 4px 0;
+  font-size: 1.6rem;
+}
+.adm-kicker {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: #a8a29e;
+  margin: 0;
+}
+.adm-hint {
+  color: #a8a29e;
+  font-size: 0.9rem;
+}
+.adm-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0;
+}
+.adm-tab {
+  background: #1c1917;
+  border: 1px solid #44403c;
+  color: #e7e5e4;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.adm-tab.active {
+  background: #f59e0b;
+  color: #1c1917;
+  border-color: #f59e0b;
+  font-weight: 600;
+}
+.adm-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+.adm-stat {
+  background: #1c1917;
+  border: 1px solid #292524;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.adm-stat span {
+  font-size: 0.75rem;
+  color: #a8a29e;
+}
+.adm-stat strong {
+  font-size: 1.4rem;
+}
+.adm-card {
+  background: #1c1917;
+  border: 1px solid #292524;
+  border-radius: 14px;
+  padding: 16px;
+}
+.adm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.adm-toolbar h3 {
+  margin: 0;
+  flex: 1;
+}
+.adm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.adm-table th,
+.adm-table td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid #292524;
+  vertical-align: top;
+}
+.adm-table small {
+  display: block;
+  color: #a8a29e;
+  font-size: 0.75rem;
+}
+.adm-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #292524;
+  font-size: 0.75rem;
+}
+.adm-btn {
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-size: 0.85rem;
+}
+.adm-btn.primary {
+  background: #f59e0b;
+  color: #1c1917;
+  font-weight: 600;
+}
+.adm-btn.ghost {
+  background: transparent;
+  border-color: #44403c;
+  color: #e7e5e4;
+}
+.adm-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.adm-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.adm-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #292524;
+}
+.adm-list small {
+  display: block;
+  color: #a8a29e;
+}
+
+/* Scoped to the admin console only — do not leak into other pages */
+.adm-shell select {
+  background: #0c0a09;
+  color: #e7e5e4;
+  border: 1px solid #44403c;
+  border-radius: 8px;
+  padding: 8px;
+}

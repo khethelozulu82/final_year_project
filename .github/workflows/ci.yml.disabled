@@ -1,0 +1,40 @@
+name: CI
+
+# Runs basic checks on every PR into develop/main.
+# Customize the "build" steps for your actual tech stack (Python, Node, etc.)
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # --- Example: Python setup (delete if not using Python) ---
+      # - name: Set up Python
+      #   uses: actions/setup-python@v5
+      #   with:
+      #     python-version: '3.11'
+      # - name: Install dependencies
+      #   run: pip install -r requirements.txt
+      # - name: Run tests
+      #   run: pytest
+
+      # --- Example: Node setup (delete if not using Node) ---
+      # - name: Set up Node
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '20'
+      # - name: Install dependencies
+      #   run: npm install
+      # - name: Run tests
+      #   run: npm test
+
+      - name: Placeholder check
+        run: echo "Add real build/test steps above once tech stack is decided."

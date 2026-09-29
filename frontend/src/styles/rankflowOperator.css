@@ -1,0 +1,247 @@
+/* RankFlow Operator Console — responsive */
+.ro-shell {
+  display: flex;
+  min-height: 100vh;
+  background: #0b1220;
+  color: #e8eef7;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+.ro-nav {
+  width: 220px;
+  flex-shrink: 0;
+  background: #0f1a2e;
+  border-right: 1px solid #1e2d45;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ro-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 16px;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+.ro-brand-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #38bdf8, #f59e0b);
+}
+.ro-nav button {
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #9fb0c9;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+.ro-nav button.active {
+  background: #1a2740;
+  color: #f8fafc;
+  font-weight: 600;
+}
+.ro-nav-foot {
+  margin-top: auto;
+  padding: 12px 10px;
+  font-size: 0.72rem;
+  color: #7a8ba3;
+  border-top: 1px solid #1e2d45;
+}
+.ro-main {
+  flex: 1;
+  min-width: 0;
+  padding: 16px 18px 40px;
+  overflow-x: hidden;
+}
+.ro-top h1 {
+  margin: 0;
+  font-size: clamp(1.15rem, 2.8vw, 1.55rem);
+}
+.ro-muted {
+  color: #8aa0b8;
+  font-size: 0.85rem;
+}
+.ro-banner {
+  background: #122033;
+  border: 1px solid #1e3a5f;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 12px 0;
+  font-size: 0.85rem;
+  color: #93c5fd;
+}
+.ro-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin: 14px 0;
+}
+.ro-stat {
+  background: #121c2f;
+  border: 1px solid #1e2d45;
+  border-radius: 12px;
+  padding: 12px;
+}
+.ro-stat span {
+  display: block;
+  font-size: 0.72rem;
+  color: #8aa0b8;
+}
+.ro-stat strong {
+  font-size: 1.35rem;
+}
+.ro-card {
+  background: #121c2f;
+  border: 1px solid #1e2d45;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.ro-grid2 {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 12px;
+}
+.ro-btn {
+  border-radius: 10px;
+  padding: 9px 14px;
+  border: 1px solid #2a3d5c;
+  background: #1a2740;
+  color: #e8eef7;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.ro-btn.primary {
+  background: #f59e0b;
+  color: #0b1220;
+  border-color: #f59e0b;
+  font-weight: 700;
+}
+.ro-btn.danger {
+  border-color: #ef4444;
+  color: #fecaca;
+  background: transparent;
+}
+.ro-btn.ghost {
+  background: transparent;
+}
+.ro-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.ro-table th,
+.ro-table td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid #1e2d45;
+  vertical-align: top;
+}
+.ro-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  background: #1a2740;
+}
+.ro-pill.boarding {
+  background: #422006;
+  color: #fbbf24;
+}
+.ro-pill.scheduled {
+  background: #0c4a6e;
+  color: #7dd3fc;
+}
+.ro-pill.verified {
+  background: #14532d;
+  color: #86efac;
+}
+.ro-pill.critical {
+  background: #7f1d1d;
+  color: #fecaca;
+}
+.ro-list-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid #1e2d45;
+  cursor: pointer;
+}
+.ro-list-row:hover {
+  background: #0f172a;
+}
+.ro-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.ro-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #8aa0b8;
+}
+.ro-form input,
+.ro-form select,
+.ro-form textarea {
+  background: #0b1220;
+  border: 1px solid #2a3d5c;
+  border-radius: 10px;
+  color: #e8eef7;
+  padding: 10px 12px;
+}
+.ro-form .full {
+  grid-column: 1 / -1;
+}
+.ro-code {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #86efac;
+  text-align: center;
+  padding: 16px;
+  background: #052e16;
+  border-radius: 12px;
+}
+.ro-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+@media (max-width: 900px) {
+  .ro-shell {
+    flex-direction: column;
+  }
+  .ro-nav {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: none;
+    border-bottom: 1px solid #1e2d45;
+  }
+  .ro-nav-foot {
+    display: none;
+  }
+  .ro-brand {
+    width: 100%;
+  }
+  .ro-grid2 {
+    grid-template-columns: 1fr;
+  }
+  .ro-form {
+    grid-template-columns: 1fr;
+  }
+  .ro-table {
+    display: block;
+    overflow-x: auto;
+  }
+}

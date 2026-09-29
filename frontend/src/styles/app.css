@@ -1,0 +1,504 @@
+/* ============================================================
+   THEMBA — Global stylesheet
+   Keeps the original FYP look (light theme) for shared components
+   plus the map base rules and utility classes used across pages.
+   The auth screens have their own stylesheet at authPage.css.
+   ============================================================ */
+
+:root {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: #0f172a;
+  background: #eef2f7;
+  line-height: 1.45;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.shell {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1rem 1rem 3rem;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.top-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.7rem;
+  color: #64748b;
+}
+
+h1 {
+  margin: 0.15rem 0 0;
+  font-size: 1.35rem;
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+h3.sub {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 8%);
+}
+
+.grid {
+  display: grid;
+  gap: 0;
+}
+
+@media (min-width: 800px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .grid .wide {
+    grid-column: 1 / -1;
+  }
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.65rem;
+}
+
+input {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font: inherit;
+}
+
+button {
+  border: none;
+  border-radius: 8px;
+  padding: 0.55rem 0.9rem;
+  background: #0f766e;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+button.danger {
+  background: #b91c1c;
+}
+
+button.chip {
+  background: #f1f5f9;
+  color: #334155;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+.demo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.row label {
+  margin-bottom: 0;
+  flex: 1;
+  min-width: 120px;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.list-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.list.compact .list-item {
+  padding: 0.4rem 0;
+}
+
+.item-actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.muted {
+  color: #64748b;
+}
+
+.small {
+  font-size: 0.8rem;
+}
+
+.pill {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.pill.ok {
+  background: #ccfbf1;
+  color: #115e59;
+}
+
+.pill.bad {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.banner {
+  background: #ecfdf5;
+  border: 1px solid #99f6e4;
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+}
+
+.toast {
+  position: fixed;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #fff;
+  padding: 0.65rem 1rem;
+  border-radius: 8px;
+  max-width: 90vw;
+  z-index: 50;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 10rem 1fr;
+  gap: 0.35rem 0.75rem;
+  margin: 0;
+}
+
+.kv dt {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.kv dd {
+  margin: 0;
+}
+
+.warn {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+code {
+  font-size: 0.85em;
+}
+
+/* ---------- Map base ---------- */
+.themba-map {
+  background: #dbe3ec;
+  z-index: 0;
+  position: relative;
+}
+
+/* Dark panels: dark base so the map never flashes white */
+.pmd-map-panel .themba-map,
+.drv-map-pane .themba-map,
+.drv-request-map .themba-map {
+  background: #0a1016;
+}
+
+/* Error state keeps the pink background regardless of container */
+.themba-map-error {
+  background: #fef2f2 !important;
+}
+
+.map-legend {
+  margin-top: 0.5rem;
+}
+
+.lg {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 2px;
+  vertical-align: middle;
+}
+.lg.rank { background: #0f766e; }
+.lg.dest { background: #b45309; }
+.lg.corridor {
+  width: 16px;
+  height: 4px;
+  border-radius: 2px;
+  background: #0f766e;
+}
+.lg.adhoc {
+  width: 16px;
+  height: 4px;
+  border-radius: 2px;
+  background: #d97706;
+  background-image: repeating-linear-gradient(
+    90deg,
+    #d97706 0 4px,
+    transparent 4px 8px
+  );
+}
+
+.list-item.clickable {
+  cursor: pointer;
+}
+.list-item.clickable:hover {
+  background: #f8fafc;
+}
+.list-item.active {
+  background: #f0fdfa;
+  border-radius: 8px;
+  padding-left: 0.35rem;
+}
+
+/* ---------- Passenger dashboard: full-width layout ---------- */
+.shell:has(.pmd) {
+  max-width: none;
+  padding: 0.5rem;
+}
+.shell:has(.pmd) .top {
+  padding: 0 0.5rem;
+}
+
+/* ---------- Two-column form grid helper ---------- */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.chip.active {
+  border-color: #e6a841;
+  background: rgba(230, 168, 65, 0.15);
+  color: #e6a841;
+}
+
+.auth-tabs {
+  padding-bottom: 8px;
+}
+
+@media (max-width: 600px) {
+  .form-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   Legacy auth-shell — kept so any older component that still
+   uses .auth-shell / .auth-panel / .role-picker continues to
+   render correctly. New screens use authPage.css instead.
+   ============================================================ */
+.auth-shell {
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 2.5rem;
+  min-height: 100vh;
+}
+.auth-shell .top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.auth-shell .eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: 600;
+}
+.auth-shell h1 {
+  margin: 0.15rem 0 0;
+  font-size: 1.45rem;
+  color: #0f172a;
+}
+.auth-shell .card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 0.85rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.auth-shell label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: #475569;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+.auth-shell input,
+.auth-shell select {
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.95rem;
+  background: #f8fafc;
+  color: #0f172a;
+}
+.auth-shell input:focus,
+.auth-shell select:focus {
+  outline: 2px solid #f59e0b55;
+  border-color: #f59e0b;
+  background: #fff;
+}
+.auth-shell button[type="submit"],
+.auth-shell button.primary {
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  background: #f59e0b;
+  color: #0f172a;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 0.25rem;
+}
+.auth-shell button.secondary {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0.65rem 1rem;
+  background: #fff;
+  color: #334155;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+.auth-shell .demo-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.auth-shell .chip {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  border-radius: 999px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.auth-shell .chip.active {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #b45309;
+  font-weight: 600;
+}
+.auth-shell .hint,
+.auth-shell .muted {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0 0 0.75rem;
+}
+.auth-shell .auth-tabs {
+  padding-bottom: 0.25rem;
+}
+.auth-panel {
+  width: min(520px, 100%);
+  margin: 0 auto;
+  padding: 36px;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(21, 35, 40, 0.12);
+  border-radius: 12px;
+  box-shadow: 0 18px 40px rgba(26, 30, 20, 0.08);
+}
+.role-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  margin: 26px 0;
+  padding: 6px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(21, 35, 40, 0.12);
+}
+.role-picker button {
+  padding: 10px 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 6px;
+  color: inherit;
+  text-transform: capitalize;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+.role-picker button.selected {
+  background: linear-gradient(135deg, #c8881a, #db9d35);
+  color: #101b1c;
+  border-color: transparent;
+  font-weight: 800;
+}
+
+@media (max-width: 480px) {
+  .auth-shell {
+    padding: 0.75rem 0.65rem 2rem;
+  }
+  .auth-shell h1 {
+    font-size: 1.25rem;
+  }
+}

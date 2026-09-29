@@ -1,0 +1,311 @@
+/* ============================================================
+   THEMBA — Auth screens (Welcome / Login / Register)
+   Dark card on dark backdrop, gold accents.
+   ============================================================ */
+
+.auth-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  background: #0b1220;
+  color: #e8eef7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+.auth-screen-inner {
+  width: 100%;
+  max-width: 460px;
+  margin: 0 auto;
+}
+
+/* ---------- Card ---------- */
+.auth-card {
+  background: #111a2c;
+  border: 1px solid #1f2d45;
+  border-radius: 16px;
+  padding: 28px 26px 26px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------- Back link ---------- */
+.auth-back {
+  background: transparent;
+  border: none;
+  color: #8aa0b8;
+  font-size: 0.85rem;
+  padding: 0;
+  cursor: pointer;
+  align-self: flex-start;
+  margin-bottom: 4px;
+}
+.auth-back:hover {
+  color: #e8eef7;
+}
+
+/* ---------- Eyebrow ---------- */
+.auth-eyebrow {
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  color: #f59e0b;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* ---------- Heading ---------- */
+.auth-h1 {
+  margin: 0;
+  font-size: 1.85rem;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  font-weight: 700;
+}
+.auth-h1-em {
+  color: #f59e0b;
+}
+
+/* ---------- Subtitle ---------- */
+.auth-sub {
+  margin: 0;
+  color: #8aa0b8;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+/* ---------- Role tabs ---------- */
+.auth-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 4px;
+  padding: 4px;
+  background: #0b1220;
+  border: 1px solid #1f2d45;
+  border-radius: 10px;
+}
+.auth-tab {
+  background: transparent;
+  border: none;
+  color: #8aa0b8;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 8px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.auth-tab:hover {
+  color: #e8eef7;
+}
+.auth-tab.active {
+  background: #f59e0b;
+  color: #0b1220;
+  font-weight: 700;
+}
+
+/* ---------- Inputs ---------- */
+.auth-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: #8aa0b8;
+  font-weight: 500;
+}
+.auth-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #0b1220;
+  border: 1px solid #2a3d5c;
+  border-radius: 10px;
+  padding: 11px 13px;
+  color: #e8eef7;
+  font: inherit;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.auth-input:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+.auth-input::placeholder {
+  color: #5c6b86;
+}
+
+/* ---------- Buttons ---------- */
+.auth-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 13px 16px;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease, background 0.15s ease;
+}
+.auth-btn.primary {
+  background: #f59e0b;
+  color: #0b1220;
+}
+.auth-btn.primary:hover {
+  filter: brightness(1.05);
+}
+.auth-btn.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.auth-btn.ghost {
+  background: transparent;
+  border: 1px solid #2a3d5c;
+  color: #e8eef7;
+}
+.auth-btn.ghost:hover {
+  background: #16223a;
+}
+.auth-btn.full {
+  width: 100%;
+}
+
+/* ---------- Actions row (welcome) ---------- */
+.auth-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.auth-actions .auth-btn {
+  flex: 1 1 160px;
+}
+
+/* ---------- Errors ---------- */
+.auth-error {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  font-size: 0.85rem;
+}
+
+/* ---------- Hint line ---------- */
+.auth-hint {
+  margin: 2px 0 0;
+  font-size: 0.75rem;
+  color: #8aa0b8;
+  text-align: left;
+}
+.auth-hint code {
+  background: #0b1220;
+  border: 1px solid #1f2d45;
+  border-radius: 4px;
+  padding: 1px 6px;
+  color: #f59e0b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+}
+
+/* ---------- Advanced (API URL) ---------- */
+.auth-advanced {
+  margin-top: 6px;
+  border-top: 1px solid #1f2d45;
+  padding-top: 12px;
+}
+.auth-advanced summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #8aa0b8;
+  list-style: none;
+  outline: none;
+}
+.auth-advanced summary::marker {
+  display: none;
+}
+.auth-advanced summary::-webkit-details-marker {
+  display: none;
+}
+.auth-advanced summary:hover {
+  color: #e8eef7;
+}
+.auth-advanced[open] summary {
+  margin-bottom: 8px;
+  color: #e8eef7;
+}
+.auth-advanced .auth-input {
+  margin-top: 4px;
+  font-size: 0.85rem;
+}
+
+/* ---------- Welcome extras ---------- */
+.auth-welcome {
+  padding: 32px 28px;
+}
+.auth-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: #5c6b86;
+  text-transform: uppercase;
+}
+
+/* ---------- Register extras ---------- */
+.auth-register .auth-tabs {
+  grid-template-columns: repeat(3, 1fr);
+}
+.auth-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 420px) {
+  .auth-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- Small phones ---------- */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 22px 18px 20px;
+    border-radius: 14px;
+  }
+  .auth-h1 {
+    font-size: 1.55rem;
+  }
+  .auth-tab {
+    font-size: 0.72rem;
+    padding: 7px 4px;
+  }
+}
+
+/* ---------- Global toast (kept in sync with app.css) ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: #0b1220;
+  color: #e8eef7;
+  border: 1px solid #1f2d45;
+  border-left: 3px solid #f59e0b;
+  padding: 10px 16px;
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  font-size: 0.9rem;
+  z-index: 9999;
+  max-width: min(520px, 92vw);
+  text-align: center;
+}

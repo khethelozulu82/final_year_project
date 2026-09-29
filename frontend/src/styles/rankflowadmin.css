@@ -1,0 +1,275 @@
+/* RankFlow Operations Console — responsive admin shell */
+.rf-shell {
+  display: flex;
+  min-height: 100vh;
+  background: #0b1220;
+  color: #e8eef7;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+.rf-nav {
+  width: 240px;
+  flex-shrink: 0;
+  background: #0f1a2e;
+  border-right: 1px solid #1e2d45;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.rf-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 18px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+}
+.rf-brand-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #38bdf8, #f59e0b);
+}
+.rf-nav button {
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #9fb0c9;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.rf-nav button.active {
+  background: #1a2740;
+  color: #f8fafc;
+  font-weight: 600;
+}
+.rf-nav-foot {
+  margin-top: auto;
+  padding: 12px 10px;
+  font-size: 0.75rem;
+  color: #7a8ba3;
+}
+.rf-main {
+  flex: 1;
+  min-width: 0;
+  padding: 16px 18px 40px;
+  overflow-x: hidden;
+}
+.rf-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.rf-top h1 {
+  margin: 0;
+  font-size: clamp(1.2rem, 3vw, 1.6rem);
+}
+.rf-muted {
+  color: #8aa0b8;
+  font-size: 0.85rem;
+}
+.rf-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.rf-stat {
+  background: #121c2f;
+  border: 1px solid #1e2d45;
+  border-radius: 14px;
+  padding: 14px;
+}
+.rf-stat span {
+  display: block;
+  font-size: 0.75rem;
+  color: #8aa0b8;
+}
+.rf-stat strong {
+  font-size: 1.5rem;
+}
+.rf-card {
+  background: #121c2f;
+  border: 1px solid #1e2d45;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.rf-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.rf-toolbar h3 {
+  margin: 0;
+  flex: 1;
+  min-width: 120px;
+}
+.rf-btn {
+  border-radius: 10px;
+  padding: 9px 14px;
+  border: 1px solid #2a3d5c;
+  background: #1a2740;
+  color: #e8eef7;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.rf-btn.primary {
+  background: #f59e0b;
+  color: #0b1220;
+  border-color: #f59e0b;
+  font-weight: 700;
+}
+.rf-btn.danger {
+  border-color: #ef4444;
+  color: #fecaca;
+  background: transparent;
+}
+.rf-btn.ghost {
+  background: transparent;
+}
+.rf-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.rf-table th,
+.rf-table td {
+  text-align: left;
+  padding: 10px 8px;
+  border-bottom: 1px solid #1e2d45;
+  vertical-align: top;
+}
+.rf-table small {
+  display: block;
+  color: #8aa0b8;
+}
+.rf-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #1a2740;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+.rf-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+.rf-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #8aa0b8;
+}
+.rf-form input,
+.rf-form select,
+.rf-form textarea {
+  background: #0b1220;
+  border: 1px solid #2a3d5c;
+  border-radius: 10px;
+  color: #e8eef7;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+}
+.rf-form textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+.rf-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rf-dev {
+  border: 1px dashed #f59e0b;
+  background: #1a1508;
+}
+.rf-panic {
+  border-color: #ef4444;
+}
+.rf-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rf-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid #1e2d45;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+/* Mobile: stack nav */
+@media (max-width: 860px) {
+  .rf-shell {
+    flex-direction: column;
+  }
+  .rf-nav {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: none;
+    border-bottom: 1px solid #1e2d45;
+    max-height: none;
+  }
+  .rf-nav-foot {
+    display: none;
+  }
+  .rf-brand {
+    width: 100%;
+    padding-bottom: 8px;
+  }
+  .rf-table {
+    display: block;
+    overflow-x: auto;
+  }
+}/* ============================================================
+   Schedule-a-trip form: required vs optional grouping
+   ============================================================ */
+
+.rf-form-section-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #8aa0b8;
+  margin: 6px 0 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+.rf-form-section-label:first-child {
+  margin-top: 0;
+}
+.rf-form-section-hint {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+  color: #5c6b86;
+  font-size: 0.7rem;
+}
+.rf-required-mark {
+  color: #f59e0b;
+  font-weight: 700;
+  margin-left: 2px;
+}
+/* Slightly soften optional fields so required ones pop */
+.rf-form > label:not(:has(.rf-required-mark)) > input,
+.rf-form > label:not(:has(.rf-required-mark)) > select,
+.rf-form > label:not(:has(.rf-required-mark)) > textarea {
+  opacity: 0.95;
+}
