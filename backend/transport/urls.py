@@ -14,7 +14,19 @@ urlpatterns = [
     path("bookings/", views.api_create_booking),
     path("bookings/mine/", views.api_my_bookings),
     path("bookings/verify-code/", views.api_redeem_verification_code),
-    path("passenger/announcements/", views.api_passenger_announcements),   # NEW
+
+    # Passenger — complaint / rating review / history
+    path(
+        "passenger/trips/<int:trip_id>/file-complaint/",
+        views.api_passenger_file_complaint,
+    ),
+    path(
+        "passenger/trips/<int:trip_id>/review-status/",
+        views.api_passenger_trip_review_status,
+    ),
+    path("passenger/history/", views.api_passenger_history),
+
+    path("passenger/announcements/", views.api_passenger_announcements),
     path("passenger/notifications/", views.api_my_passenger_notifications),
     path(
         "passenger/notifications/<int:notification_id>/read/",

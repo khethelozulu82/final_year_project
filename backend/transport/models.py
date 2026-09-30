@@ -16,6 +16,7 @@ Decisions applied:
 - PassengerNotification: slim status messages for the passenger bar.
 - Announcement: RankFlow Ops scoped (topic/message/status/audience/rank/route/service).
 - SafetyIncident + AuditLog + OperatorNotification for the RankFlow admin console.
+- DriverRating / DriverComplaint: one rating / one complaint per trip per passenger.
 """
 from django.conf import settings
 from django.db import models
@@ -580,7 +581,7 @@ class PanicAlert(models.Model):
 
 
 class DriverRating(models.Model):
-    """Passenger rating of a driver (1–5 stars)."""
+    """Passenger rating of a driver (1–5 stars). One per trip per passenger."""
 
     driver = models.ForeignKey(
         "accounts.DriverProfile",
@@ -607,13 +608,19 @@ class DriverRating(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["driver", "trip", "passenger"],
+                name="unique_rating_per_passenger_per_trip",
+            )
+        ]
 
     def __str__(self):
         return f"{self.driver} — {self.score}/5"
 
 
 class DriverComplaint(models.Model):
-    """Complaint raised against a driver."""
+    """Complaint raised against a driver. One per trip per passenger."""
 
     class Status(models.TextChoices):
         OPEN = "open", "Open"
@@ -661,6 +668,12 @@ class DriverComplaint(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["trip", "raised_by"],
+                name="unique_complaint_per_passenger_per_trip",
+            )
+        ]
 
     def __str__(self):
         return f"{self.driver} — {self.category} ({self.status})"

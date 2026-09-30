@@ -9,12 +9,13 @@
  *   - the trip's seats are full (seats_taken >= seat_capacity), OR
  *   - at least one passenger has boarded and the driver confirmed the trip.
  *
+ * Live status: the driver console polls /api/trips/<id>/ every 6 s so the
+ * status pill updates in real time as the operator advances or cancels the
+ * trip.
+ *
  * Route rendering:
- *   - Fetches the road geometry (departure → destination) via the routing
- *     service the moment a trip is opened, so the driver always sees the
- *     route they should follow — even if the backend hasn't cached it yet.
- *   - Shows the driver's own live GPS position as a green marker, read once
- *     when the trip panel opens, and continuously updated while tracking.
+ *   - Fetches road geometry via the routing service on trip open.
+ *   - Shows the driver's own live GPS position as a green marker.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, getUser } from '../api';
@@ -29,7 +30,7 @@ function fmtTime(t) {
 }
 
 function statusLabel(s) {
-  return String(s || 'scheduled').replace(/_/g, ' ');
+  return String(s || 'scheduled').replace(/_/g, ' ').toUpperCase();
 }
 
 function buildRoutePoints(trip) {
@@ -126,11 +127,11 @@ export default function DriverPage({ notify, onExit }) {
   const [lastGps, setLastGps] = useState(null);
   const [passengerPickup, setPassengerPickup] = useState(null);
 
-  // Road geometry for the currently selected trip, fetched from the routing
-  // service (ORS/OSRM) the moment a trip is opened.
-  const [driverRouteGeometry, setDriverRouteGeometry] = useState([]);
+  // Live status for the currently-selected trip
+  const [liveStatus, setLiveStatus] = useState(null);
+  const [statusUpdatedAt, setStatusUpdatedAt] = useState(null);
 
-  // Guard so the auto-GPS trigger fires only once per trip.
+  const [driverRouteGeometry, setDriverRouteGeometry] = useState([]);
   const autoStartedForTripRef = useRef(null);
 
   const watchRef = useRef(null);
@@ -156,7 +157,6 @@ export default function DriverPage({ notify, onExit }) {
       setProfile(p);
       return p;
     } catch {
-      /* keep last known */
       return null;
     }
   }
@@ -232,9 +232,47 @@ export default function DriverPage({ notify, onExit }) {
   }, [selectedTrip?.id, tracking]);
 
   // ============================================================
+  // LIVE STATUS: poll the selected trip status every 6 s.
+  // ============================================================
+  useEffect(() => {
+    if (!selectedTrip) {
+      setLiveStatus(null);
+      setStatusUpdatedAt(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const tripId = selectedTrip.id;
+
+    const tick = async () => {
+      try {
+        const data = await api.tripDetail(tripId);
+        if (cancelled) return;
+        if (data?.status) {
+          setLiveStatus(data.status);
+          setStatusUpdatedAt(new Date());
+          setSelectedTrip((prev) =>
+            prev && prev.id === tripId ? { ...prev, ...data } : prev
+          );
+          setTrips((prev) =>
+            prev.map((row) => (row.id === tripId ? { ...row, ...data } : row))
+          );
+        }
+      } catch {
+        /* silent */
+      }
+    };
+
+    tick();
+    const id = setInterval(tick, 6000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [selectedTrip?.id]);
+
+  // ============================================================
   // Fetch the road geometry for the selected trip on the fly.
-  // The backend only caches geometry for some routes; we call the
-  // routing service directly so a route is always drawn.
   // ============================================================
   useEffect(() => {
     if (!selectedTrip) {
@@ -290,8 +328,7 @@ export default function DriverPage({ notify, onExit }) {
   }, [selectedTrip?.id]);
 
   // ============================================================
-  // When the driver opens a trip, read the current position once
-  // so their live marker appears on the map immediately.
+  // Read the current position once on trip open.
   // ============================================================
   useEffect(() => {
     if (!selectedTrip) return undefined;
@@ -310,7 +347,7 @@ export default function DriverPage({ notify, onExit }) {
         });
       },
       () => {
-        /* silently ignore — user may have denied permission */
+        /* silently ignore */
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 5000 }
     );
@@ -461,7 +498,6 @@ export default function DriverPage({ notify, onExit }) {
         route_status: res?.route_status,
       });
     } catch (e) {
-      // GPS push failures are silent (network blips) — don't spam the driver.
       console.debug('[gps] push failed:', e.message);
     }
   }
@@ -588,16 +624,12 @@ export default function DriverPage({ notify, onExit }) {
     [selectedTrip]
   );
 
-  // ============================================================
-  // Map overlays — route polyline + markers + driver live GPS.
-  // ============================================================
   const mapOverlays = useMemo(() => {
     if (!selectedTrip) return { polylines: [], markers: [] };
     const route = selectedTrip.route || {};
     const backendGeom = Array.isArray(route.geometry) ? route.geometry : [];
     const lines = [];
 
-    // ---------- Route polyline (departure → destination) ----------
     const routeGeom =
       driverRouteGeometry.length >= 3
         ? driverRouteGeometry
@@ -613,7 +645,6 @@ export default function DriverPage({ notify, onExit }) {
         weight: 5,
       });
     } else if (routePoints.length >= 3) {
-      // Last resort — stitch the stop markers together.
       lines.push({
         id: 'driver-route-stops',
         positions: routePoints.map((p) => [p.lat, p.lng]),
@@ -623,7 +654,6 @@ export default function DriverPage({ notify, onExit }) {
       });
     }
 
-    // ---------- Markers ----------
     const markers = routePoints.map((p) => ({
       id: `rp-${p.id}`,
       lat: p.lat,
@@ -633,7 +663,6 @@ export default function DriverPage({ notify, onExit }) {
       color: selectedPoint?.id === p.id ? '#f5a524' : '#0f766e',
     }));
 
-    // ---------- Driver live GPS marker ----------
     if (lastGps?.lat != null && lastGps?.lng != null) {
       markers.push({
         id: 'driver-live',
@@ -654,7 +683,6 @@ export default function DriverPage({ notify, onExit }) {
       });
     }
 
-    // ---------- Passenger pickup marker ----------
     if (passengerPickup?.lat != null && passengerPickup?.lng != null) {
       markers.push({
         id: 'passenger-pickup',
@@ -687,7 +715,7 @@ export default function DriverPage({ notify, onExit }) {
     return Math.round((selectedPoint.order / routePoints.length) * 100);
   }, [routePoints, selectedPoint, selectedTrip]);
 
-  // ---- Trip request panel (Accept / Reject) ----
+  // ---- Trip request panel ----
   if (rideRequestPanel) {
     const lat = Number(rideRequestPanel.passenger_lat);
     const lng = Number(rideRequestPanel.passenger_lng);
@@ -774,6 +802,7 @@ export default function DriverPage({ notify, onExit }) {
       selectedTrip.vehicle?.plate_number ||
       vehicle?.plate_number ||
       '—';
+    const displayStatus = liveStatus || selectedTrip.status;
 
     return (
       <div className="drv-shell">
@@ -825,9 +854,21 @@ export default function DriverPage({ notify, onExit }) {
                 : ''}
             </small>
           </div>
-          <span className={`drv-pill status-${selectedTrip.status}`}>
-            {statusLabel(selectedTrip.status)}
+          <span className={`drv-pill status-${displayStatus}`}>
+            {statusLabel(displayStatus)}
           </span>
+          {statusUpdatedAt && (
+            <span
+              title={`Last synced ${statusUpdatedAt.toLocaleTimeString()}`}
+              style={{
+                marginLeft: 8,
+                color: '#4ade80',
+                fontSize: '0.7rem',
+              }}
+            >
+              ● live
+            </span>
+          )}
         </div>
 
         <div className="drv-trip-layout">
@@ -888,6 +929,23 @@ export default function DriverPage({ notify, onExit }) {
                   <div>
                     <dt>Licence</dt>
                     <dd>{profile?.license_number || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt>Status</dt>
+                    <dd>
+                      {statusLabel(displayStatus)}
+                      {statusUpdatedAt && (
+                        <span
+                          style={{
+                            marginLeft: 8,
+                            color: '#4ade80',
+                            fontSize: '0.7rem',
+                          }}
+                        >
+                          ● live
+                        </span>
+                      )}
+                    </dd>
                   </div>
                 </dl>
 

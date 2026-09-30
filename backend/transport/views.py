@@ -1,5 +1,12 @@
 """
 Merged API views: FYP trip/booking/operator + search-first routing/GPS/panic.
+Includes:
+  - Passenger complaint flow (one per trip, only after COMPLETED)
+  - Passenger rating flow (one per trip, only after COMPLETED)
+  - Passenger history endpoint
+  - Walk-in registration uses next-of-kin as mobile / id replacement
+  - Terminal trip status cascades onto bookings so passenger views update.
+  - Admin trip scheduling requires a VERIFIED driver and a vehicle.
 """
 import logging
 import math
@@ -48,6 +55,8 @@ from .models import (
     VehicleLocation,
     VerificationCode,
     DriverNotification,
+    DriverComplaint,
+    DriverRating,
 )
 from .serializers import (
     BookingSerializer,
@@ -74,6 +83,59 @@ def _operator(request):
         return request.user.operator_profile
     except Exception:
         return None
+
+
+def _cascade_trip_status_to_bookings(trip, new_status):
+    """
+    When a Trip reaches a terminal status, mirror it onto every active
+    Booking on that trip so the passenger's My bookings view reflects it.
+
+    Called from:
+      - api_admin_simulate_trip (Dev tab progression)
+      - api_admin_trip_detail (PATCH status)
+
+    Cancellation already has its own cascade in api_cancel_trip; this helper
+    is what handles the COMPLETED transition (and provides a uniform
+    fallback for CANCELLED too).
+    """
+    terminal_map = {
+        Trip.Status.COMPLETED: Booking.Status.COMPLETED,
+        Trip.Status.CANCELLED: Booking.Status.CANCELLED,
+    }
+    target = terminal_map.get(new_status)
+    if target is None:
+        return 0
+
+    affected = 0
+    qs = trip.bookings.exclude(
+        status__in=[Booking.Status.CANCELLED, Booking.Status.COMPLETED]
+    )
+    for b in qs:
+        b.status = target
+        b.save(update_fields=["status"])
+        affected += 1
+
+        if b.passenger_id:
+            PassengerNotification.objects.create(
+                passenger=b.passenger,
+                title=f"Trip {trip.trip_code} {new_status}",
+                body=(
+                    f"Your trip {trip.route.departure.name} → "
+                    f"{trip.route.destination.name} on {trip.departure_date} "
+                    f"is now {new_status}. Open Archived trips to leave feedback."
+                ),
+                meta={
+                    "type": (
+                        "trip_completed"
+                        if new_status == Trip.Status.COMPLETED
+                        else "trip_cancelled"
+                    ),
+                    "trip_id": trip.id,
+                    "trip_code": trip.trip_code,
+                    "booking_id": b.id,
+                },
+            )
+    return affected
 
 
 # ---------- Public discovery ----------
@@ -290,6 +352,15 @@ def api_create_booking(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_my_bookings(request):
+    """
+    Passenger booking list for the My bookings panel.
+
+    By default returns only ACTIVE bookings (reserved / boarded).
+    Cancelled and completed bookings are archived — pass ?include=all
+    to fetch them for a history view.
+    """
+    include = (request.query_params.get("include") or "").strip().lower()
+
     qs = (
         Booking.objects.filter(passenger=request.user)
         .select_related(
@@ -301,6 +372,12 @@ def api_my_bookings(request):
         .prefetch_related("verification_code")
         .order_by("-booked_at")
     )
+
+    if include != "all":
+        qs = qs.filter(
+            status__in=[Booking.Status.RESERVED, Booking.Status.BOARDED]
+        )
+
     return Response(BookingSerializer(qs, many=True).data)
 
 
@@ -551,6 +628,13 @@ def api_trip_manifest(request, trip_id):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def api_register_walk_in(request, trip_id):
+    """
+    Operator registers a walk-in passenger.
+
+    Walk-in uses next-of-kin fields in place of mobile / ID:
+      - next_of_kin_name    (was: mobile)
+      - next_of_kin_phone   (was: id_number)
+    """
     op = _operator(request)
     if op is None:
         return Response({"detail": "Not an operator account."}, status=403)
@@ -559,26 +643,31 @@ def api_register_walk_in(request, trip_id):
         return Response({"detail": "Trip not found or not in your rank scope."}, status=404)
     if trip.seats_available < 1:
         return Response({"detail": "No seats available."}, status=400)
+
     name = (request.data.get("name") or "").strip()
     if not name:
         fn = (request.data.get("first_name") or "").strip()
         sn = (request.data.get("surname") or request.data.get("last_name") or "").strip()
         name = f"{fn} {sn}".strip()
-    phone = (request.data.get("phone") or request.data.get("mobile") or "").strip()
     if not name:
         return Response({"detail": "name is required."}, status=400)
+
+    nok_name = (request.data.get("next_of_kin_name") or "").strip()
+    nok_phone = (request.data.get("next_of_kin_phone") or "").strip()
+
     booking = Booking.objects.create(
         trip=trip,
         walk_in_name=name,
-        walk_in_phone=phone,
-        walk_in_id_number=request.data.get("id_number", ""),
-        walk_in_next_of_kin_name=request.data.get("next_of_kin_name", ""),
-        walk_in_next_of_kin_phone=request.data.get("next_of_kin_phone", ""),
+        walk_in_phone=nok_phone,
+        walk_in_id_number=nok_name,
+        walk_in_next_of_kin_name=nok_name,
+        walk_in_next_of_kin_phone=nok_phone,
         status=Booking.Status.RESERVED,
         fare_paid=trip.route.fare,
     )
     code = get_random_string(6).upper()
     VerificationCode.objects.create(booking=booking, code=code)
+
     data = BookingSerializer(booking).data
     data["verification_code"] = code
     return Response(data, status=201)
@@ -980,7 +1069,6 @@ def api_vehicle_location(request, vehicle_id):
     except Vehicle.DoesNotExist:
         return Response({"detail": "Vehicle not found."}, status=404)
 
-    # ---- AuthZ ----
     allowed = False
     if request.user.role == "admin":
         allowed = True
@@ -1005,7 +1093,6 @@ def api_vehicle_location(request, vehicle_id):
     if not allowed:
         return Response({"detail": "Not allowed to update this vehicle."}, status=403)
 
-    # ---- Validate lat/lng ----
     try:
         lat = float(request.data["lat"])
         lng = float(request.data["lng"])
@@ -1016,7 +1103,6 @@ def api_vehicle_location(request, vehicle_id):
     if source == VehicleLocation.Source.SIMULATED:
         return Response({"detail": "Simulated GPS is disabled."}, status=400)
 
-    # ---- Find the trip to attach this ping to ----
     trip_id = request.data.get("trip_id")
     trip = None
     if trip_id:
@@ -1036,7 +1122,6 @@ def api_vehicle_location(request, vehicle_id):
             .first()
         )
 
-    # ---- Save the location ping ----
     loc = VehicleLocation.objects.create(
         vehicle=vehicle,
         trip=trip,
@@ -1048,7 +1133,6 @@ def api_vehicle_location(request, vehicle_id):
         source=source,
     )
 
-    # ---- Deviation check ----
     route_status = "unknown"
     distance_from_route_m = None
     if trip and trip.route:
@@ -1056,13 +1140,11 @@ def api_vehicle_location(request, vehicle_id):
         route_status = dev.status
         distance_from_route_m = dev.distance_m
 
-    # ---- Auto-advance boarding → in_progress on first ping ----
     if trip and trip.status == Trip.Status.BOARDING:
         trip.status = Trip.Status.IN_PROGRESS
         trip.actual_departure_time = timezone.now()
         trip.save(update_fields=["status", "actual_departure_time"])
 
-    # ---- Broadcast over WebSocket ----
     payload = {
         "vehicle_id": vehicle.id,
         "trip_id": trip.id if trip else None,
@@ -1525,8 +1607,13 @@ def api_admin_trip_options(request):
             {"id": op.id, "label": f"{name}" + (f" ({assoc})" if assoc else "")}
         )
 
+    # Only VERIFIED drivers appear as assignable options.
     drivers = []
-    for d in DriverProfile.objects.select_related("user").order_by("id"):
+    for d in (
+        DriverProfile.objects.select_related("user")
+        .filter(status=DriverProfile.VerificationStatus.VERIFIED)
+        .order_by("id")
+    ):
         u = d.user
         name = f"{u.first_name} {u.last_name}".strip() or u.username
         phone = getattr(u, "phone", "") or ""
@@ -1675,19 +1762,27 @@ def api_admin_schedule_trip(request):
     except (TypeError, ValueError):
         seat_capacity = 15
 
-    driver = None
-    if data.get("driver_id"):
-        try:
-            driver = DriverProfile.objects.get(pk=int(data["driver_id"]))
-        except (DriverProfile.DoesNotExist, TypeError, ValueError):
-            return Response({"detail": "Invalid driver_id."}, status=400)
+    # ----- Driver is REQUIRED -----
+    driver_raw = data.get("driver_id")
+    if driver_raw in (None, "", "null"):
+        return Response({"detail": "driver_id is required."}, status=400)
+    try:
+        driver = DriverProfile.objects.get(pk=int(driver_raw))
+    except (DriverProfile.DoesNotExist, TypeError, ValueError):
+        return Response({"detail": "Invalid driver_id."}, status=400)
+    if driver.status != DriverProfile.VerificationStatus.VERIFIED:
+        return Response(
+            {"detail": "Selected driver is not verified."}, status=400
+        )
 
-    vehicle = None
-    if data.get("vehicle_id"):
-        try:
-            vehicle = Vehicle.objects.get(pk=int(data["vehicle_id"]))
-        except (Vehicle.DoesNotExist, TypeError, ValueError):
-            return Response({"detail": "Invalid vehicle_id."}, status=400)
+    # ----- Vehicle is REQUIRED -----
+    vehicle_raw = data.get("vehicle_id")
+    if vehicle_raw in (None, "", "null"):
+        return Response({"detail": "vehicle_id is required."}, status=400)
+    try:
+        vehicle = Vehicle.objects.get(pk=int(vehicle_raw))
+    except (Vehicle.DoesNotExist, TypeError, ValueError):
+        return Response({"detail": "Invalid vehicle_id."}, status=400)
 
     trip_code = (data.get("trip_code") or "").strip().upper() or _gen_trip_code(
         route, departure_date
@@ -1830,31 +1925,42 @@ def api_admin_trip_detail(request, trip_id):
             pass
     if "driver_id" in data:
         if not data["driver_id"]:
-            trip.driver = None
-        else:
-            try:
-                trip.driver = DriverProfile.objects.get(pk=int(data["driver_id"]))
-            except (DriverProfile.DoesNotExist, TypeError, ValueError):
-                return Response({"detail": "Invalid driver_id."}, status=400)
+            return Response(
+                {"detail": "driver_id cannot be cleared on an active trip."},
+                status=400,
+            )
+        try:
+            trip.driver = DriverProfile.objects.get(pk=int(data["driver_id"]))
+        except (DriverProfile.DoesNotExist, TypeError, ValueError):
+            return Response({"detail": "Invalid driver_id."}, status=400)
     if "vehicle_id" in data:
         if not data["vehicle_id"]:
-            trip.vehicle = None
-        else:
-            try:
-                trip.vehicle = Vehicle.objects.get(pk=int(data["vehicle_id"]))
-            except (Vehicle.DoesNotExist, TypeError, ValueError):
-                return Response({"detail": "Invalid vehicle_id."}, status=400)
+            return Response(
+                {"detail": "vehicle_id cannot be cleared on an active trip."},
+                status=400,
+            )
+        try:
+            trip.vehicle = Vehicle.objects.get(pk=int(data["vehicle_id"]))
+        except (Vehicle.DoesNotExist, TypeError, ValueError):
+            return Response({"detail": "Invalid vehicle_id."}, status=400)
     if "notes" in data:
         trip.notes = (data.get("notes") or "")[:500]
 
+    previous_status = trip.status
     status_change_to_cancelled = False
+    status_change_to_completed = False
     if "status" in data and data["status"] in dict(Trip.Status.choices):
         new_status = data["status"]
         if new_status == Trip.Status.CANCELLED and trip.status != Trip.Status.CANCELLED:
             status_change_to_cancelled = True
+        if new_status == Trip.Status.COMPLETED and trip.status != Trip.Status.COMPLETED:
+            status_change_to_completed = True
         trip.status = new_status
 
     trip.save()
+
+    if status_change_to_completed:
+        _cascade_trip_status_to_bookings(trip, Trip.Status.COMPLETED)
 
     if status_change_to_cancelled:
         try:
@@ -1954,12 +2060,6 @@ def _announce_row(a):
 
 
 def _publish_announcement(ann, actor):
-    """
-    Deliver announcement to audience scoped by rank (and optional route).
-
-    Passengers with audience=ALL_USERS read announcements via
-    /api/passenger/announcements/ — no per-user PassengerNotification here.
-    """
     from django.contrib.auth import get_user_model
     from accounts.models import DriverProfile, OperatorProfile
 
@@ -1997,7 +2097,6 @@ def _publish_announcement(ann, actor):
                     pass
             elif u.role == "operator":
                 notify_operator_user(u)
-            # Passengers are handled by /api/passenger/announcements/
     else:
         driver_qs = DriverProfile.objects.select_related("user")
         op_qs = OperatorProfile.objects.select_related("user")
@@ -2259,6 +2358,7 @@ def api_history(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def api_rate_driver(request):
+    """Passenger rates the driver — only after COMPLETED, once per trip."""
     if getattr(request.user, "role", "") != "passenger":
         return Response({"detail": "Passengers only."}, status=403)
     try:
@@ -2272,10 +2372,22 @@ def api_rate_driver(request):
         trip = Trip.objects.select_related("driver").get(pk=trip_id)
     except Trip.DoesNotExist:
         return Response({"detail": "Trip not found."}, status=404)
+
+    booking = Booking.objects.filter(trip=trip, passenger=request.user).first()
+    if not booking:
+        return Response({"detail": "You were not on this trip."}, status=403)
+
     if trip.status != Trip.Status.COMPLETED:
-        return Response({"detail": "Rate only after trip is completed."}, status=400)
+        return Response(
+            {"detail": "Rate only after the trip is completed."}, status=400
+        )
     if not trip.driver_id:
         return Response({"detail": "No driver on trip."}, status=400)
+    if DriverRating.objects.filter(trip=trip, passenger=request.user).exists():
+        return Response(
+            {"detail": "You have already rated this trip."}, status=400
+        )
+
     comment = (request.data.get("comment") or "")[:500]
     rating = DriverRating.objects.create(
         driver=trip.driver,
@@ -2341,6 +2453,10 @@ def api_admin_simulate_trip(request):
     if trip.status == Trip.Status.IN_PROGRESS and not trip.actual_departure_time:
         trip.actual_departure_time = timezone.now()
     trip.save()
+
+    # Cascade terminal status to bookings so passenger views update.
+    if trip.status in (Trip.Status.COMPLETED, Trip.Status.CANCELLED):
+        _cascade_trip_status_to_bookings(trip, trip.status)
 
     if trip.driver_id:
         DriverNotification.objects.create(
@@ -2671,6 +2787,186 @@ def api_passenger_notification_read(request, notification_id):
     n.read = True
     n.save(update_fields=["read"])
     return Response({"id": n.id, "read": True})
+
+
+# ------------------------------------------------------------------
+# Passenger complaint + history (only after trip COMPLETED)
+# ------------------------------------------------------------------
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def api_passenger_file_complaint(request, trip_id):
+    if getattr(request.user, "role", "") != "passenger":
+        return Response({"detail": "Passengers only."}, status=403)
+
+    try:
+        trip = Trip.objects.select_related("driver", "route").get(pk=trip_id)
+    except Trip.DoesNotExist:
+        return Response({"detail": "Trip not found."}, status=404)
+
+    booking = Booking.objects.filter(trip=trip, passenger=request.user).first()
+    if not booking:
+        return Response({"detail": "You were not on this trip."}, status=403)
+    if trip.status != Trip.Status.COMPLETED:
+        return Response(
+            {"detail": "You can only file a complaint after the trip is completed."},
+            status=400,
+        )
+    if not trip.driver_id:
+        return Response({"detail": "No driver to complain about."}, status=400)
+
+    if DriverComplaint.objects.filter(trip=trip, raised_by=request.user).exists():
+        return Response(
+            {"detail": "You have already submitted a complaint for this trip."},
+            status=400,
+        )
+
+    category = (request.data.get("category") or "other").strip()[:40]
+    description = (request.data.get("description") or "").strip()
+    if not description:
+        return Response({"detail": "description is required."}, status=400)
+
+    complaint = DriverComplaint.objects.create(
+        driver=trip.driver,
+        trip=trip,
+        raised_by=request.user,
+        category=category,
+        description=description,
+        status=DriverComplaint.Status.OPEN,
+    )
+
+    try:
+        _audit(
+            request.user,
+            "complaint.create",
+            "complaint",
+            complaint.id,
+            f"Passenger complaint on {trip.trip_code}",
+        )
+    except Exception:
+        pass
+
+    try:
+        op = trip.operator
+        if op and getattr(op, "user", None):
+            OperatorNotification.objects.create(
+                operator_user=op.user,
+                title="New passenger complaint",
+                body=f"{category} · trip {trip.trip_code}",
+                meta={"type": "complaint", "complaint_id": complaint.id},
+            )
+    except Exception:
+        pass
+
+    return Response(
+        {
+            "id": complaint.id,
+            "trip_id": trip.id,
+            "trip_code": trip.trip_code,
+            "category": complaint.category,
+            "status": complaint.status,
+            "message": "Complaint submitted. The operator will review it.",
+        },
+        status=201,
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def api_passenger_trip_review_status(request, trip_id):
+    if getattr(request.user, "role", "") != "passenger":
+        return Response({"detail": "Passengers only."}, status=403)
+
+    try:
+        trip = Trip.objects.get(pk=trip_id)
+    except Trip.DoesNotExist:
+        return Response({"detail": "Trip not found."}, status=404)
+
+    booking = Booking.objects.filter(trip=trip, passenger=request.user).first()
+    if not booking:
+        return Response({"detail": "You were not on this trip."}, status=403)
+
+    has_rating = DriverRating.objects.filter(
+        trip=trip, passenger=request.user
+    ).exists()
+    has_complaint = DriverComplaint.objects.filter(
+        trip=trip, raised_by=request.user
+    ).exists()
+
+    return Response(
+        {
+            "trip_id": trip.id,
+            "trip_code": trip.trip_code,
+            "status": trip.status,
+            "completed": trip.status == Trip.Status.COMPLETED,
+            "has_rating": has_rating,
+            "has_complaint": has_complaint,
+            "can_rate": trip.status == Trip.Status.COMPLETED and not has_rating,
+            "can_complain": trip.status == Trip.Status.COMPLETED and not has_complaint,
+        }
+    )
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def api_passenger_history(request):
+    if getattr(request.user, "role", "") != "passenger":
+        return Response({"detail": "Passengers only."}, status=403)
+
+    audits = AuditLog.objects.filter(actor=request.user).order_by("-created_at")[:60]
+    complaints = (
+        DriverComplaint.objects.filter(raised_by=request.user)
+        .select_related("trip", "driver__user")
+        .order_by("-created_at")[:30]
+    )
+    ratings = (
+        DriverRating.objects.filter(passenger=request.user)
+        .select_related("trip", "driver__user")
+        .order_by("-created_at")[:30]
+    )
+
+    return Response(
+        {
+            "audits": [
+                {
+                    "id": a.id,
+                    "action": a.action,
+                    "detail": a.detail,
+                    "created_at": a.created_at,
+                }
+                for a in audits
+            ],
+            "complaints": [
+                {
+                    "id": c.id,
+                    "category": c.category,
+                    "status": c.status,
+                    "trip_code": getattr(c.trip, "trip_code", None),
+                    "driver_name": (
+                        f"{c.driver.user.first_name} {c.driver.user.last_name}".strip()
+                        if c.driver_id and c.driver.user_id
+                        else None
+                    ),
+                    "created_at": c.created_at,
+                }
+                for c in complaints
+            ],
+            "ratings": [
+                {
+                    "id": r.id,
+                    "score": r.score,
+                    "comment": r.comment,
+                    "trip_code": getattr(r.trip, "trip_code", None),
+                    "created_at": r.created_at,
+                }
+                for r in ratings
+            ],
+        }
+    )
+
+
+# ---------- Operator dashboard / confirmations ----------
 
 
 @api_view(["GET"])

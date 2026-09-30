@@ -1,25 +1,43 @@
 """
-THEMBA host settings — multi-device LAN testing friendly.
+THEMBA host settings — LAN testing + production-ready.
 
-- DEBUG: CORS open, ALLOWED_HOSTS=*
-- Bind runserver/daphne to 0.0.0.0 so a second phone/laptop can hit the API
-- SQLite by default; set DATABASE_URL for PostgreSQL
+- DEBUG: CORS open in dev, restricted in prod
+- ALLOWED_HOSTS: comma-separated, or '*' in dev
+- SQLite by default; PostgreSQL via DATABASE_URL (dj-database-url)
+- WhiteNoise for static files in production
 - Channels: in-memory if no REDIS_URL (single process); Redis for multi-process
+- HTTPS proxy headers honoured when behind Railway/Render/Vercel
 """
 import os
 from pathlib import Path
 
+import dj_database_url
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
+
+# ---------------------------------------------------------------------------
+# Core
+# ---------------------------------------------------------------------------
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "themba-dev-insecure-change-me")
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() in ("1", "true", "yes")
 
 _hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "*").strip()
 ALLOWED_HOSTS = [h.strip() for h in _hosts.split(",") if h.strip()] or ["*"]
 
+# When True (Railway/Render/Vercel), trust proxy headers so Django knows the
+# request came over HTTPS and can build correct absolute URLs.
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    USE_X_FORWARDED_HOST = True
+    SECURE_SSL_REDIRECT = False  # proxy already redirects; avoid loops
+
+
+# ---------------------------------------------------------------------------
+# Apps
+# ---------------------------------------------------------------------------
 INSTALLED_APPS = [
     "daphne",
     "django.contrib.admin",
@@ -67,28 +85,24 @@ TEMPLATES = [
     },
 ]
 
-# --- Database: SQLite default; PostgreSQL via DATABASE_URL ---
-_database_url = os.getenv("DATABASE_URL", "").strip()
-if _database_url.startswith("postgres"):
-    # postgres://user:pass@host:port/db
-    import re
 
-    m = re.match(
-        r"postgres(?:ql)?://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)",
-        _database_url,
-    )
-    if not m:
-        raise ValueError("Invalid DATABASE_URL")
-    user, password, host, port, name = m.groups()
+# ---------------------------------------------------------------------------
+# Database
+#
+# Priority:
+#   1. DATABASE_URL (Postgres or any URL dj-database-url understands)
+#   2. SQLite fallback for local dev
+# ---------------------------------------------------------------------------
+_database_url = os.getenv("DATABASE_URL", "").strip()
+
+if _database_url:
     DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": name,
-            "USER": user,
-            "PASSWORD": password,
-            "HOST": host,
-            "PORT": port,
-        }
+        "default": dj_database_url.parse(
+            _database_url,
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=_database_url.startswith("postgres") and not DEBUG,
+        )
     }
 else:
     DATABASES = {
@@ -98,6 +112,10 @@ else:
         }
     }
 
+
+# ---------------------------------------------------------------------------
+# Auth
+# ---------------------------------------------------------------------------
 AUTH_USER_MODEL = "accounts.User"
 AUTHENTICATION_BACKENDS = [
     "accounts.auth_backend.PhoneOrEmailBackend",
@@ -114,11 +132,34 @@ TIME_ZONE = "Africa/Johannesburg"
 USE_I18N = True
 USE_TZ = True
 
+
+# ---------------------------------------------------------------------------
+# Static files
+#
+# - STATIC_ROOT: where `collectstatic` puts everything for the web server
+# - WhiteNoise: serves those files straight from Daphne, no nginx needed
+# ---------------------------------------------------------------------------
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# --- CORS / multi-device ---
+
+# ---------------------------------------------------------------------------
+# CORS
+#
+# - In dev (DEBUG=True) with no CORS_ALLOWED_ORIGINS set → allow all
+# - In prod → must set CORS_ALLOWED_ORIGINS explicitly
+# ---------------------------------------------------------------------------
 _cors = os.getenv("CORS_ALLOWED_ORIGINS", "").strip()
 if DEBUG and not _cors:
     CORS_ALLOW_ALL_ORIGINS = True
@@ -127,7 +168,20 @@ else:
     CORS_ALLOWED_ORIGINS = [o.strip() for o in _cors.split(",") if o.strip()]
 
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "authorization",
+    "content-type",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]
 
+
+# ---------------------------------------------------------------------------
+# DRF
+# ---------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.TokenAuthentication",
@@ -138,7 +192,10 @@ REST_FRAMEWORK = {
     ],
 }
 
-# --- Channels ---
+
+# ---------------------------------------------------------------------------
+# Channels
+# ---------------------------------------------------------------------------
 _redis = os.getenv("REDIS_URL", "").strip()
 if _redis:
     CHANNEL_LAYERS = {
@@ -152,9 +209,14 @@ else:
         "default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}
     }
 
-# --- Routing / tracking ---
+
+# ---------------------------------------------------------------------------
+# Routing / tracking
+# ---------------------------------------------------------------------------
 ORS_API_KEY = os.getenv("ORS_API_KEY", "")
-ROUTING_SERVICE_URL = os.getenv("ROUTING_SERVICE_URL", "https://router.project-osrm.org")
+ROUTING_SERVICE_URL = os.getenv(
+    "ROUTING_SERVICE_URL", "https://router.project-osrm.org"
+)
 DEFAULT_ROUTE_DEVIATION_THRESHOLD_M = float(
     os.getenv("DEFAULT_ROUTE_DEVIATION_THRESHOLD_M", "150")
 )

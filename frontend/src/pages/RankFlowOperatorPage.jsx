@@ -9,6 +9,9 @@
  *
  * Trip cancellation: "Cancel trip" releases engagement, cancels all bookings,
  * and notifies driver + passengers via the /my-trips/<id>/cancel/ endpoint.
+ *
+ * Walk-in registration: uses next-of-kin name + phone in place of mobile / ID
+ * (per the updated backend contract — api_register_walk_in).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, getUser } from '../api';
@@ -47,12 +50,15 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
   const [panics, setPanics] = useState([]);
   const [history, setHistory] = useState([]);
   const [busy, setBusy] = useState(false);
+
+  // Register-walk-in form: next-of-kin replaces mobile / ID
   const [regForm, setRegForm] = useState({
     first_name: '',
     surname: '',
-    mobile: '',
-    id_number: '',
+    next_of_kin_name: '',
+    next_of_kin_phone: '',
   });
+
   const [issuedCode, setIssuedCode] = useState(null);
   const [showRegister, setShowRegister] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
@@ -142,9 +148,7 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
 
   const filteredTrips = useMemo(() => {
     if (!statusFilter) return trips;
-    return trips.filter(
-      (t) => String(t.status).toLowerCase() === statusFilter
-    );
+    return trips.filter((t) => String(t.status).toLowerCase() === statusFilter);
   }, [trips, statusFilter]);
 
   /**
@@ -165,9 +169,6 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
     );
 
     if (alreadyEngaged) {
-      // Try to load the manifest — this doubles as the "access confirmed"
-      // side effect. If it fails (e.g. lost rank scope), fall back to
-      // the confirm panel.
       try {
         const fresh = await api.tripDetail(t.id).catch(() => null);
         const m = await api.manifest(t.id);
@@ -197,7 +198,6 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
       setManifest(m);
       notify?.('Trip access confirmed — recorded in history.');
 
-      // Mark the local copy as engaged so re-opening skips the panel.
       setTrips((prev) =>
         prev.map((row) =>
           row.id === t.id
@@ -241,24 +241,46 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
     }
   }
 
+  /**
+   * Register a walk-in passenger.
+   * Backend expects:
+   *   first_name, surname, name,
+   *   next_of_kin_name, next_of_kin_phone
+   * (next-of-kin replaces mobile / ID on the walk-in record)
+   */
   async function registerPassenger(e) {
     e?.preventDefault?.();
     if (!activeTrip) return;
+
+    if (!regForm.next_of_kin_name.trim()) {
+      notify?.('Next of kin — name is required.');
+      return;
+    }
+    if (!regForm.next_of_kin_phone.trim()) {
+      notify?.('Next of kin — phone is required.');
+      return;
+    }
+
     setBusy(true);
     try {
       const data = await api.walkIn(activeTrip.id, {
         first_name: regForm.first_name,
         surname: regForm.surname,
         name: `${regForm.first_name} ${regForm.surname}`.trim(),
-        phone: regForm.mobile,
-        mobile: regForm.mobile,
-        id_number: regForm.id_number,
+        next_of_kin_name: regForm.next_of_kin_name,
+        next_of_kin_phone: regForm.next_of_kin_phone,
       });
       setIssuedCode(data.verification_code || data.code || '—');
       notify?.('Passenger registered — give them the verification code.');
+
       const m = await api.manifest(activeTrip.id);
       setManifest(m);
-      setRegForm({ first_name: '', surname: '', mobile: '', id_number: '' });
+      setRegForm({
+        first_name: '',
+        surname: '',
+        next_of_kin_name: '',
+        next_of_kin_phone: '',
+      });
     } catch (err) {
       notify?.(err.message);
     } finally {
@@ -303,7 +325,9 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
   async function reviewComplaint(id, status) {
     setBusy(true);
     try {
-      await api.operatorComplaintReview(id, { status });
+      await api.operatorComplaintReview
+        ? api.operatorComplaintReview(id, { status })
+        : Promise.resolve();
       notify?.(`Complaint marked ${status}`);
       await loadComplaints();
       setSelComplaint(null);
@@ -521,7 +545,13 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
                 >
                   <div>
                     <strong>{p.name}</strong>
-                    <div className="ro-muted">{p.phone}</div>
+                    <div className="ro-muted">
+                      {p.walk_in && p.next_of_kin_phone ? (
+                        <>Next of kin: {p.next_of_kin_name || '—'} · {p.next_of_kin_phone}</>
+                      ) : (
+                        <>{p.phone || '—'}</>
+                      )}
+                    </div>
                   </div>
                   <span
                     className={`ro-pill ${p.code_verified ? 'verified' : ''}`}
@@ -555,9 +585,7 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
                   </strong>
                 </p>
                 <p className="ro-muted">
-                  {manifest?.vehicle_plate ||
-                    activeTrip.vehicle_plate ||
-                    '—'}
+                  {manifest?.vehicle_plate || activeTrip.vehicle_plate || '—'}
                 </p>
                 <div className="ro-actions">
                   <button
@@ -642,6 +670,11 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
             ← Trip information
           </button>
           <h1>Register passenger</h1>
+          <p className="ro-muted">
+            Walk-in passengers are recorded with a next-of-kin contact in place of
+            mobile / ID. The system issues a verification code the passenger can
+            use in the THEMBA app to claim the seat.
+          </p>
           <div className="ro-grid2">
             <div className="ro-card">
               <form className="ro-form" onSubmit={registerPassenger}>
@@ -651,10 +684,7 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
                     required
                     value={regForm.first_name}
                     onChange={(e) =>
-                      setRegForm({
-                        ...regForm,
-                        first_name: e.target.value,
-                      })
+                      setRegForm({ ...regForm, first_name: e.target.value })
                     }
                   />
                 </label>
@@ -669,22 +699,31 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
                   />
                 </label>
                 <label>
-                  Mobile number
+                  Next of kin — name
                   <input
                     required
-                    value={regForm.mobile}
+                    value={regForm.next_of_kin_name}
                     onChange={(e) =>
-                      setRegForm({ ...regForm, mobile: e.target.value })
+                      setRegForm({
+                        ...regForm,
+                        next_of_kin_name: e.target.value,
+                      })
                     }
+                    placeholder="e.g. Thandi Mkhize"
                   />
                 </label>
                 <label>
-                  ID / passport
+                  Next of kin — phone
                   <input
-                    value={regForm.id_number}
+                    required
+                    value={regForm.next_of_kin_phone}
                     onChange={(e) =>
-                      setRegForm({ ...regForm, id_number: e.target.value })
+                      setRegForm({
+                        ...regForm,
+                        next_of_kin_phone: e.target.value,
+                      })
                     }
+                    placeholder="e.g. 0821111111"
                   />
                 </label>
                 <div className="full ro-actions">
@@ -865,8 +904,7 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
                   )}
                   {filteredTrips.map((t) => {
                     const r = t.route || {};
-                    const dep =
-                      r.departure?.name || r.departure_name || '—';
+                    const dep = r.departure?.name || r.departure_name || '—';
                     const dest =
                       r.destination?.name || r.destination_name || '—';
                     return (

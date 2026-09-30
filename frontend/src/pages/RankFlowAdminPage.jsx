@@ -3,7 +3,11 @@
  * Overview, Announcements, Complaints, Trips/Queue, Accounts, Drivers,
  * Safety, History, Panic alerts, Dev/Simulate.
  *
- * Operator assignment on Schedule a trip is optional (rank-pool when unset).
+ * Schedule a trip:
+ *   - Required: Route, Departure day, Driver, Vehicle
+ *   - Optional: Operator (rank pool when blank), Expected time, Seat
+ *     capacity, Notes
+ *
  * Trip cancellation cascades: bookings become cancelled + notifications sent.
  * Create-trip form groups required fields first, optional ones under a divider.
  */
@@ -246,6 +250,25 @@ export default function RankFlowAdminPage({ notify, onExit }) {
 
   async function submitTrip(e) {
     e?.preventDefault?.();
+
+    // ----- Required field guards -----
+    if (!tripForm.route_id) {
+      notify?.('Route is required.');
+      return;
+    }
+    if (!tripForm.departure_date) {
+      notify?.('Departure day is required.');
+      return;
+    }
+    if (!tripForm.driver_id) {
+      notify?.('Driver is required.');
+      return;
+    }
+    if (!tripForm.vehicle_id) {
+      notify?.('Vehicle is required.');
+      return;
+    }
+
     setBusy(true);
     const payload = {
       route_id: Number(tripForm.route_id),
@@ -253,10 +276,10 @@ export default function RankFlowAdminPage({ notify, onExit }) {
       expected_departure_time: tripForm.expected_departure_time || null,
       seat_capacity: Number(tripForm.seat_capacity) || 15,
       notes: tripForm.notes || '',
+      driver_id: Number(tripForm.driver_id),
+      vehicle_id: Number(tripForm.vehicle_id),
     };
     if (tripForm.operator_id) payload.operator_id = Number(tripForm.operator_id);
-    if (tripForm.driver_id) payload.driver_id = Number(tripForm.driver_id);
-    if (tripForm.vehicle_id) payload.vehicle_id = Number(tripForm.vehicle_id);
 
     try {
       if (editTripId) {
@@ -720,6 +743,8 @@ export default function RankFlowAdminPage({ notify, onExit }) {
                   setTripForm({
                     ...emptyTrip,
                     route_id: options.routes[0]?.id || '',
+                    driver_id: options.drivers[0]?.id || '',
+                    vehicle_id: options.vehicles[0]?.id || '',
                   });
                   setShowTripForm(true);
                 }}
@@ -735,7 +760,7 @@ export default function RankFlowAdminPage({ notify, onExit }) {
                 <h3>{editTripId ? 'Edit trip' : 'Create trip'}</h3>
                 <p className="rf-muted">
                   Fill in the <strong>required</strong> fields to schedule a trip.
-                  Optional fields let you pre-assign an operator, driver, and vehicle.
+                  A verified driver and a vehicle must be assigned to every trip.
                 </p>
                 <form className="rf-form" onSubmit={submitTrip}>
                   {/* ---------- REQUIRED ---------- */}
@@ -774,6 +799,48 @@ export default function RankFlowAdminPage({ notify, onExit }) {
                         })
                       }
                     />
+                  </label>
+
+                  <label>
+                    Driver <span className="rf-required-mark">*</span>
+                    <select
+                      required
+                      value={tripForm.driver_id}
+                      onChange={(e) =>
+                        setTripForm({
+                          ...tripForm,
+                          driver_id: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="">Select driver</option>
+                      {(options.drivers || []).map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label>
+                    Vehicle <span className="rf-required-mark">*</span>
+                    <select
+                      required
+                      value={tripForm.vehicle_id}
+                      onChange={(e) =>
+                        setTripForm({
+                          ...tripForm,
+                          vehicle_id: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="">Select vehicle</option>
+                      {(options.vehicles || []).map((v) => (
+                        <option key={v.id} value={v.id}>
+                          {v.label}
+                        </option>
+                      ))}
+                    </select>
                   </label>
 
                   {/* ---------- OPTIONAL ---------- */}
@@ -836,46 +903,6 @@ export default function RankFlowAdminPage({ notify, onExit }) {
                       }
                       placeholder="15"
                     />
-                  </label>
-
-                  <label>
-                    Driver
-                    <select
-                      value={tripForm.driver_id}
-                      onChange={(e) =>
-                        setTripForm({
-                          ...tripForm,
-                          driver_id: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="">None</option>
-                      {(options.drivers || []).map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.label}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label>
-                    Vehicle
-                    <select
-                      value={tripForm.vehicle_id}
-                      onChange={(e) =>
-                        setTripForm({
-                          ...tripForm,
-                          vehicle_id: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="">None</option>
-                      {(options.vehicles || []).map((v) => (
-                        <option key={v.id} value={v.id}>
-                          {v.label}
-                        </option>
-                      ))}
-                    </select>
                   </label>
 
                   <label className="rf-span">

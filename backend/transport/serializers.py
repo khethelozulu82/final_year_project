@@ -16,6 +16,8 @@ from .models import (
     PanicAlert,
     RideRequest,
     PassengerNotification,
+    DriverComplaint,
+    DriverRating,
 )
 
 
@@ -102,6 +104,7 @@ class TripSerializer(serializers.ModelSerializer):
     driver_name = serializers.SerializerMethodField()
     seats_taken = serializers.IntegerField(read_only=True)
     seats_available = serializers.IntegerField(read_only=True)
+    is_engaged = serializers.SerializerMethodField()
 
     class Meta:
         model = Trip
@@ -122,8 +125,12 @@ class TripSerializer(serializers.ModelSerializer):
             "vehicle_plate",
             "vehicle_id",
             "engaged_at",
+            "is_engaged",
             "notes",
         ]
+
+    def get_is_engaged(self, obj):
+        return bool(obj.engaged_at or obj.engaged_by_id)
 
     def get_operator_name(self, obj):
         try:
@@ -320,3 +327,78 @@ class PassengerNotificationSerializer(serializers.ModelSerializer):
         model = PassengerNotification
         fields = ["id", "title", "body", "read", "created_at", "meta"]
         read_only_fields = ["created_at"]
+
+
+# ------------------------------------------------------------------
+# Driver complaint / rating serializers
+# ------------------------------------------------------------------
+
+
+class DriverComplaintSerializer(serializers.ModelSerializer):
+    driver_name = serializers.SerializerMethodField()
+    trip_code = serializers.SerializerMethodField()
+    raised_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DriverComplaint
+        fields = [
+            "id",
+            "driver",
+            "driver_name",
+            "trip",
+            "trip_code",
+            "raised_by",
+            "raised_by_name",
+            "category",
+            "description",
+            "status",
+            "escalation_reason",
+            "admin_note",
+            "created_at",
+        ]
+        read_only_fields = [
+            "driver",
+            "trip",
+            "raised_by",
+            "status",
+            "escalation_reason",
+            "admin_note",
+            "created_at",
+        ]
+
+    def get_driver_name(self, obj):
+        try:
+            u = obj.driver.user
+            return f"{u.first_name} {u.last_name}".strip() or u.username
+        except Exception:
+            return None
+
+    def get_trip_code(self, obj):
+        try:
+            return obj.trip.trip_code
+        except Exception:
+            return None
+
+    def get_raised_by_name(self, obj):
+        try:
+            u = obj.raised_by
+            if not u:
+                return None
+            return f"{u.first_name} {u.last_name}".strip() or u.username
+        except Exception:
+            return None
+
+
+class DriverRatingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DriverRating
+        fields = [
+            "id",
+            "driver",
+            "trip",
+            "passenger",
+            "score",
+            "comment",
+            "created_at",
+        ]
+        read_only_fields = ["driver", "trip", "passenger", "created_at"]

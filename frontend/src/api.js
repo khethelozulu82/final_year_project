@@ -69,6 +69,7 @@ async function request(path, { method = 'GET', body, auth = false } = {}) {
 }
 
 export const api = {
+  // ---------- Auth ----------
   health: () => request('/health/'),
   login: (ident, password) =>
     request('/auth/login/', {
@@ -90,14 +91,18 @@ export const api = {
   registerOperator: (body) =>
     request('/auth/register/operator/', { method: 'POST', body }),
 
+  // ---------- Catalogue ----------
   listTrips: (params = {}) => {
     const q = new URLSearchParams(params).toString();
     return request(`/trips/${q ? `?${q}` : ''}`);
   },
   listRoutes: () => request('/routes/'),
+  listRanks: () => request('/ranks/'),
+  listDestinations: () => request('/destinations/'),
   tripDetail: (tripId) => request(`/trips/${tripId}/`),
   tripLive: (tripId) => request(`/trips/${tripId}/live/`, { auth: true }),
 
+  // ---------- Passenger booking ----------
   createBooking: (tripId, tripCode, extra = {}) =>
     request('/bookings/', {
       method: 'POST',
@@ -113,8 +118,14 @@ export const api = {
     const qs = opts.include === 'all' ? '?include=all' : '';
     return request(`/bookings/mine/${qs}`, { auth: true });
   },
+  verifyBookingCode: (code) =>
+    request('/bookings/verify-code/', {
+      method: 'POST',
+      auth: true,
+      body: { code: String(code || '').trim().toUpperCase() },
+    }),
 
-  // --- Operator ---
+  // ---------- Operator ----------
   myTrips: () => request('/my-trips/', { auth: true }),
   manifest: (tripId) => request(`/my-trips/${tripId}/manifest/`, { auth: true }),
   engage: (tripId) =>
@@ -135,8 +146,15 @@ export const api = {
       auth: true,
       body: { code },
     }),
+  myMemberships: () => request('/my-memberships/', { auth: true }),
+  requestRank: (rankId, notes = '') =>
+    request('/request-rank/', {
+      method: 'POST',
+      auth: true,
+      body: { rank_id: rankId, notes },
+    }),
 
-  // --- Driver ---
+  // ---------- Driver ----------
   myVehicle: () => request('/vehicles/mine/', { auth: true }),
   postLocation: (vehicleId, payload) =>
     request(`/vehicles/${vehicleId}/location/`, {
@@ -157,26 +175,26 @@ export const api = {
       body: { trip_code: tripCode },
     }),
 
+  // ---------- Fleet / routing ----------
   fleet: () => request('/fleet/', { auth: true }),
-  myMemberships: () => request('/my-memberships/', { auth: true }),
-  requestRank: (rankId, notes = '') =>
-    request('/request-rank/', {
-      method: 'POST',
-      auth: true,
-      body: { rank_id: rankId, notes },
-    }),
-  listRanks: () => request('/ranks/'),
-
   directions: (origin, destination) =>
     request('/routing/directions/', {
       method: 'POST',
       body: { origin, destination },
     }),
+  calculateRouteFare: (payload) =>
+    request('/routing/calculate/', { method: 'POST', body: payload }),
+
+  // ---------- Panic ----------
   panic: (payload) =>
     request('/panic-alerts/', { method: 'POST', auth: true, body: payload }),
+
+  // ---------- Admin ----------
   adminSummary: () => request('/admin/summary/', { auth: true }),
   adminUsers: (role = '') =>
-    request(`/admin/users/${role ? `?role=${encodeURIComponent(role)}` : ''}`, { auth: true }),
+    request(`/admin/users/${role ? `?role=${encodeURIComponent(role)}` : ''}`, {
+      auth: true,
+    }),
   adminSetUserActive: (userId, is_active) =>
     request(`/admin/users/${userId}/set-active/`, {
       method: 'POST',
@@ -240,10 +258,17 @@ export const api = {
       auth: true,
       body: { trip_id, step },
     }),
+
+  // ---------- History ----------
   history: () => request('/history/', { auth: true }),
-  rateDriver: (payload) => request('/ratings/', { method: 'POST', auth: true, body: payload }),
+
+  // ---------- Ratings ----------
+  rateDriver: (payload) =>
+    request('/ratings/', { method: 'POST', auth: true, body: payload }),
   driverRatingSummary: (driverId) =>
     request(`/drivers/${driverId}/rating/`, { auth: true }),
+
+  // ---------- Ride requests ----------
   createRideRequest: (payload) =>
     request('/ride-requests/', { method: 'POST', auth: true, body: payload }),
   getRideRequest: (id) => request(`/ride-requests/${id}/`, { auth: true }),
@@ -252,6 +277,7 @@ export const api = {
   rejectRideRequest: (id) =>
     request(`/ride-requests/${id}/reject/`, { method: 'POST', auth: true, body: {} }),
 
+  // ---------- Passenger notifications / announcements ----------
   passengerNotifications: () =>
     request('/passenger/notifications/', { auth: true }),
   passengerAnnouncements: () =>
@@ -262,6 +288,18 @@ export const api = {
       auth: true,
     }),
 
+  // ---------- Passenger complaints / history ----------
+  fileComplaint: (tripId, payload) =>
+    request(`/passenger/trips/${tripId}/file-complaint/`, {
+      method: 'POST',
+      auth: true,
+      body: payload,
+    }),
+  tripReviewStatus: (tripId) =>
+    request(`/passenger/trips/${tripId}/review-status/`, { auth: true }),
+  passengerHistory: () => request('/passenger/history/', { auth: true }),
+
+  // ---------- Announcements (operator / shared aliases) ----------
   listAnnouncements: () => request('/announcements/', { auth: true }),
   createAnnouncement: (payload) =>
     request('/announcements/', { method: 'POST', auth: true, body: payload }),
@@ -269,6 +307,7 @@ export const api = {
     request(`/announcements/${id}/`, { method: 'PATCH', auth: true, body: payload }),
   getAnnouncement: (id) => request(`/announcements/${id}/`, { auth: true }),
 
+  // ---------- Operator dashboard / panels ----------
   operatorDashboard: () => request('/operator/dashboard/', { auth: true }),
   operatorDrivers: () => request('/operator/drivers/', { auth: true }),
   operatorComplaints: () => request('/operator/complaints/', { auth: true }),
@@ -277,13 +316,8 @@ export const api = {
     request(`/my-trips/${tripId}/confirm/`, { method: 'POST', auth: true, body: {} }),
   verifyTripAssets: (tripId) =>
     request(`/my-trips/${tripId}/verify-assets/`, { method: 'POST', auth: true, body: {} }),
+
+  // Aliases used by operator console
   listOperatorDrivers: () => request('/operator/drivers/', { auth: true }),
   listOperatorComplaints: () => request('/operator/complaints/', { auth: true }),
-
-  verifyBookingCode: (code) =>
-    request('/bookings/verify-code/', {
-      method: 'POST',
-      auth: true,
-      body: { code: String(code || '').trim().toUpperCase() },
-    }),
 };

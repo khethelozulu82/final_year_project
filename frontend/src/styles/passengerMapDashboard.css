@@ -2,6 +2,7 @@
    THEMBA Passenger Portal — auto-fit responsive CSS
    - Map panel is a flex column with fixed bottom row
    - Legend + stat boxes always visible
+   - Live status pill + archive styling
    ================================================== */
 
 .pmd {
@@ -170,7 +171,6 @@
 
 /* ============================================================
    MAP PANEL — flex column with FIXED bottom row
-   Map area grows; legend + stats sit underneath, always visible.
    ============================================================ */
 .pmd-map-panel {
   display: flex;
@@ -181,18 +181,13 @@
   border-radius: 14px;
   padding: clamp(8px, 1vw, 12px);
   overflow: hidden;
-
-  /* Definite height so flex children resolve correctly */
   height: clamp(480px, 62vh, 680px);
   min-height: 480px;
-
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
   gap: 10px;
 }
-
-/* Map wrapper — takes remaining space above bottom row */
 .pmd-map-panel > .themba-map,
 .pmd-map-panel > div[style*="position: relative"] {
   flex: 1 1 auto;
@@ -204,8 +199,6 @@
   overflow: hidden;
   background: #0a1016;
 }
-
-/* Google Maps div */
 .pmd-map-panel .themba-map > div,
 .pmd-map-panel .themba-map {
   height: 100% !important;
@@ -214,14 +207,11 @@
   border-radius: 10px;
   overflow: hidden;
 }
-
-/* Bottom row: legend + stats are always visible */
 .pmd-map-panel > .pmd-map-legend,
 .pmd-map-panel > .pmd-stat-row {
   flex: 0 0 auto;
 }
 
-/* Legend */
 .pmd-map-legend {
   display: flex;
   gap: 16px;
@@ -232,7 +222,6 @@
   margin: 0;
 }
 
-/* Stats grid — 3 columns on desktop */
 .pmd-stat-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -269,7 +258,6 @@
   line-height: 1.2;
 }
 
-/* Trip control block (active stage, below stats) */
 .pmd-trip-control {
   flex: 0 0 auto;
   padding: 12px;
@@ -287,7 +275,6 @@
   margin: 4px 0 0;
 }
 
-/* Map badge */
 .pmd-map-badge {
   position: absolute;
   top: 20px;
@@ -605,6 +592,11 @@
 .pmd-pill.muted {
   opacity: 0.75;
 }
+.pmd-pill.bad {
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.1);
+}
 
 /* ---------- DL ---------- */
 .pmd-dl {
@@ -716,6 +708,50 @@
   font: inherit;
   box-sizing: border-box;
   max-width: 100%;
+}
+
+/* ---------- Live sync indicator ---------- */
+.pmd-live-sync {
+  font-size: 0.65rem;
+  color: #8b9bb0;
+  margin-left: 8px;
+}
+
+/* ---------- Notifications section ---------- */
+.pmd-notif-section-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8b9bb0;
+  margin: 12px 0 6px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+.pmd-notif-section-label:first-of-type {
+  margin-top: 4px;
+}
+.pmd-notif-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(230, 168, 65, 0.18);
+  color: #e6a841;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.pmd-notif-list strong {
+  display: block;
+  font-size: 0.85rem;
+  color: #e8eef2;
+  margin: 2px 0 4px;
+}
+.pmd-notif-list li.pmd-notif.unread {
+  border-left: 2px solid #e6a841;
+  padding-left: 10px;
+  background: rgba(230, 168, 65, 0.04);
 }
 
 /* ==================================================
@@ -855,39 +891,4 @@
 .pmd code,
 .pmd .pmd-code {
   word-break: break-all;
-}/* ---------- Passenger notifications: system + personal ---------- */
-.pmd-notif-section-label {
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #8b9bb0;
-  margin: 12px 0 6px;
-  font-weight: 700;
-  opacity: 0.85;
-}
-.pmd-notif-section-label:first-of-type {
-  margin-top: 4px;
-}
-.pmd-notif-badge {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 6px;
-  background: rgba(230, 168, 65, 0.18);
-  color: #e6a841;
-  font-size: 0.58rem;
-  letter-spacing: 0.08em;
-  font-weight: 700;
-  margin-right: 6px;
-  vertical-align: middle;
-}
-.pmd-notif-list strong {
-  display: block;
-  font-size: 0.85rem;
-  color: #e8eef2;
-  margin: 2px 0 4px;
-}
-.pmd-notif-list li.pmd-notif.unread {
-  border-left: 2px solid #e6a841;
-  padding-left: 10px;
-  background: rgba(230, 168, 65, 0.04);
 }
