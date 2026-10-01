@@ -7,6 +7,8 @@ Includes:
   - Walk-in registration uses next-of-kin as mobile / id replacement
   - Terminal trip status cascades onto bookings so passenger views update.
   - Admin trip scheduling requires a VERIFIED driver and a vehicle.
+  - Admin trip-options returns departure_rank_id + per-operator rank_ids and
+    per-driver association_id so the UI can scope the dropdowns to the route.
 """
 import logging
 import math
@@ -90,13 +92,8 @@ def _cascade_trip_status_to_bookings(trip, new_status):
     When a Trip reaches a terminal status, mirror it onto every active
     Booking on that trip so the passenger's My bookings view reflects it.
 
-    Called from:
-      - api_admin_simulate_trip (Dev tab progression)
-      - api_admin_trip_detail (PATCH status)
-
-    Cancellation already has its own cascade in api_cancel_trip; this helper
-    is what handles the COMPLETED transition (and provides a uniform
-    fallback for CANCELLED too).
+    Idempotent: skips bookings already in a terminal state, so it is safe
+    to call multiple times.
     """
     terminal_map = {
         Trip.Status.COMPLETED: Booking.Status.COMPLETED,
@@ -135,6 +132,19 @@ def _cascade_trip_status_to_bookings(trip, new_status):
                     "booking_id": b.id,
                 },
             )
+
+    try:
+        _audit(
+            None,
+            f"trip.cascade.{new_status}",
+            "trip",
+            trip.id,
+            f"Cascaded {new_status} onto {affected} booking(s)",
+            {"bookings_affected": affected},
+        )
+    except Exception:
+        pass
+
     return affected
 
 
@@ -195,7 +205,6 @@ def api_list_routes(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def api_list_trips(request):
-    """Upcoming / bookable trips for passengers."""
     today = timezone.localdate()
     qs = (
         Trip.objects.filter(
@@ -352,13 +361,6 @@ def api_create_booking(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_my_bookings(request):
-    """
-    Passenger booking list for the My bookings panel.
-
-    By default returns only ACTIVE bookings (reserved / boarded).
-    Cancelled and completed bookings are archived — pass ?include=all
-    to fetch them for a history view.
-    """
     include = (request.query_params.get("include") or "").strip().lower()
 
     qs = (
@@ -368,6 +370,7 @@ def api_my_bookings(request):
             "trip__route__destination",
             "trip__driver__user",
             "trip__operator__user",
+            "trip__vehicle",
         )
         .prefetch_related("verification_code")
         .order_by("-booked_at")
@@ -501,6 +504,8 @@ def api_redeem_verification_code(request):
             "operator_name": operator_name,
             "seat_capacity": trip.seat_capacity,
             "seats_taken": getattr(trip, "seats_taken", None),
+            "vehicle_id": trip.vehicle_id,
+            "vehicle_plate": getattr(trip.vehicle, "plate_number", None) if trip.vehicle_id else None,
             "route": {
                 "id": trip.route_id,
                 "fare": str(trip.route.fare) if trip.route_id else None,
@@ -513,13 +518,9 @@ def api_redeem_verification_code(request):
     )
 
 
-# ------------------------------------------------------------------
-# Passenger-facing announcements
-# ------------------------------------------------------------------
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def api_passenger_announcements(request):
-    """Global + passenger-targeted announcements for the passenger Notifications panel."""
     if getattr(request.user, "role", "") != "passenger":
         return Response({"detail": "Passengers only."}, status=403)
 
@@ -628,13 +629,6 @@ def api_trip_manifest(request, trip_id):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def api_register_walk_in(request, trip_id):
-    """
-    Operator registers a walk-in passenger.
-
-    Walk-in uses next-of-kin fields in place of mobile / ID:
-      - next_of_kin_name    (was: mobile)
-      - next_of_kin_phone   (was: id_number)
-    """
     op = _operator(request)
     if op is None:
         return Response({"detail": "Not an operator account."}, status=403)
@@ -708,14 +702,6 @@ def api_release_trip(request, trip_id):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def api_cancel_trip(request, trip_id):
-    """
-    Cancel a trip. Cascade:
-      - Trip.status → cancelled
-      - Trip.engaged_by / engaged_at → cleared
-      - All non-terminal bookings → cancelled
-      - Assigned driver + every passenger notified
-      - Audit entry written
-    """
     op = _operator(request)
     is_admin = getattr(request.user, "role", "") == "admin"
 
@@ -760,32 +746,8 @@ def api_cancel_trip(request, trip_id):
         trip.notes = (existing + f"\nCancellation reason: {reason}").strip()[:1000]
     trip.save()
 
-    affected = 0
-    for booking in trip.bookings.exclude(
-        status__in=[Booking.Status.CANCELLED, Booking.Status.COMPLETED]
-    ).select_related("passenger"):
-        booking.status = Booking.Status.CANCELLED
-        booking.save(update_fields=["status"])
-        affected += 1
-
-        if booking.passenger_id:
-            PassengerNotification.objects.create(
-                passenger=booking.passenger,
-                title=f"Trip {trip.trip_code} cancelled",
-                body=(
-                    f"Your trip {trip.route.departure.name} → "
-                    f"{trip.route.destination.name} on {trip.departure_date} "
-                    f"has been cancelled."
-                    + (f" Reason: {reason}" if reason else "")
-                ),
-                meta={
-                    "type": "trip_cancelled",
-                    "trip_id": trip.id,
-                    "trip_code": trip.trip_code,
-                    "booking_id": booking.id,
-                    "reason": reason or None,
-                },
-            )
+    # Single source of truth for the booking cascade
+    affected = _cascade_trip_status_to_bookings(trip, Trip.Status.CANCELLED)
 
     if trip.driver_id:
         DriverNotification.objects.create(
@@ -1008,6 +970,11 @@ def api_driver_confirm_trip(request):
     if trip.driver_id is None:
         trip.driver = dp
         trip.save(update_fields=["driver"])
+
+    try:
+        _audit(request.user, "driver.confirm_trip", "trip", trip.id, trip.trip_code)
+    except Exception:
+        pass
 
     return Response(TripSerializer(trip).data)
 
@@ -1595,6 +1562,7 @@ def api_admin_trip_options(request):
                 "departure": dep,
                 "destination": dest,
                 "fare": str(fare),
+                "departure_rank_id": r.departure_id,
             }
         )
 
@@ -1603,14 +1571,24 @@ def api_admin_trip_options(request):
         u = op.user
         assoc = getattr(op.association, "association_name", "") if op.association_id else ""
         name = f"{u.first_name} {u.last_name}".strip() or u.username
+        rank_ids = list(
+            OperatorAtRank.objects.filter(
+                operator=op, status=OperatorAtRank.Status.ACTIVE
+            ).values_list("rank_id", flat=True)
+        )
         operators.append(
-            {"id": op.id, "label": f"{name}" + (f" ({assoc})" if assoc else "")}
+            {
+                "id": op.id,
+                "label": f"{name}" + (f" ({assoc})" if assoc else ""),
+                "rank_ids": rank_ids,
+                "association_id": op.association_id,
+                "association_name": assoc,
+            }
         )
 
-    # Only VERIFIED drivers appear as assignable options.
     drivers = []
     for d in (
-        DriverProfile.objects.select_related("user")
+        DriverProfile.objects.select_related("user", "association")
         .filter(status=DriverProfile.VerificationStatus.VERIFIED)
         .order_by("id")
     ):
@@ -1622,6 +1600,7 @@ def api_admin_trip_options(request):
                 "id": d.id,
                 "label": f"{name}" + (f" ({phone})" if phone else ""),
                 "status": d.status,
+                "association_id": d.association_id,
             }
         )
 
@@ -1762,7 +1741,6 @@ def api_admin_schedule_trip(request):
     except (TypeError, ValueError):
         seat_capacity = 15
 
-    # ----- Driver is REQUIRED -----
     driver_raw = data.get("driver_id")
     if driver_raw in (None, "", "null"):
         return Response({"detail": "driver_id is required."}, status=400)
@@ -1775,7 +1753,6 @@ def api_admin_schedule_trip(request):
             {"detail": "Selected driver is not verified."}, status=400
         )
 
-    # ----- Vehicle is REQUIRED -----
     vehicle_raw = data.get("vehicle_id")
     if vehicle_raw in (None, "", "null"):
         return Response({"detail": "vehicle_id is required."}, status=400)
@@ -1964,31 +1941,10 @@ def api_admin_trip_detail(request, trip_id):
 
     if status_change_to_cancelled:
         try:
-            affected = 0
-            for booking in trip.bookings.exclude(
-                status__in=[Booking.Status.CANCELLED, Booking.Status.COMPLETED]
-            ).select_related("passenger"):
-                booking.status = Booking.Status.CANCELLED
-                booking.save(update_fields=["status"])
-                affected += 1
+            # Flip every active booking to cancelled (single source of truth)
+            _cascade_trip_status_to_bookings(trip, Trip.Status.CANCELLED)
 
-                if booking.passenger_id:
-                    PassengerNotification.objects.create(
-                        passenger=booking.passenger,
-                        title=f"Trip {trip.trip_code} cancelled",
-                        body=(
-                            f"Your trip {trip.route.departure.name} → "
-                            f"{trip.route.destination.name} on {trip.departure_date} "
-                            f"has been cancelled by an administrator."
-                        ),
-                        meta={
-                            "type": "trip_cancelled",
-                            "trip_id": trip.id,
-                            "trip_code": trip.trip_code,
-                            "booking_id": booking.id,
-                        },
-                    )
-
+            # Notify the assigned driver
             if trip.driver_id:
                 DriverNotification.objects.create(
                     driver=trip.driver,
@@ -2358,7 +2314,6 @@ def api_history(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def api_rate_driver(request):
-    """Passenger rates the driver — only after COMPLETED, once per trip."""
     if getattr(request.user, "role", "") != "passenger":
         return Response({"detail": "Passengers only."}, status=403)
     try:
@@ -2454,7 +2409,6 @@ def api_admin_simulate_trip(request):
         trip.actual_departure_time = timezone.now()
     trip.save()
 
-    # Cascade terminal status to bookings so passenger views update.
     if trip.status in (Trip.Status.COMPLETED, Trip.Status.CANCELLED):
         _cascade_trip_status_to_bookings(trip, trip.status)
 
@@ -2734,6 +2688,17 @@ def api_accept_ride_request(request, request_id):
             },
         )
 
+    try:
+        _audit(
+            request.user,
+            "driver.accept_ride",
+            "ride_request",
+            rr.id,
+            f"Accepted request #{rr.id}",
+        )
+    except Exception:
+        pass
+
     return Response(RideRequestSerializer(rr).data)
 
 
@@ -2767,6 +2732,17 @@ def api_reject_ride_request(request, request_id):
         rr.status = RideRequest.Status.REJECTED
         rr.save(update_fields=["status", "updated_at"])
 
+    try:
+        _audit(
+            request.user,
+            "driver.reject_ride",
+            "ride_request",
+            rr.id,
+            f"Rejected request #{rr.id}",
+        )
+    except Exception:
+        pass
+
     return Response({"detail": "Rejected.", "request": RideRequestSerializer(rr).data})
 
 
@@ -2787,11 +2763,6 @@ def api_passenger_notification_read(request, notification_id):
     n.read = True
     n.save(update_fields=["read"])
     return Response({"id": n.id, "read": True})
-
-
-# ------------------------------------------------------------------
-# Passenger complaint + history (only after trip COMPLETED)
-# ------------------------------------------------------------------
 
 
 @api_view(["POST"])

@@ -12,6 +12,7 @@ import PassengerMapDashboard from './pages/PassengerMapDashboard.jsx';
 import DriverPage from './pages/DriverPage.jsx';
 import RankFlowOperatorPage from './pages/RankFlowOperatorPage.jsx';
 import RankFlowAdminPage from './pages/RankFlowAdminPage.jsx';
+import ThemeToggle from './components/ThemeToggle.jsx';
 import './styles/operatorFyp.css';
 import './styles/authPage.css';
 
@@ -67,7 +68,6 @@ export default function App() {
     notify(`Signed in as ${data.user.role}`);
   }
 
-  // ——— Logged in: full-bleed role dashboards ———
   if (token && user) {
     const r = user.role === 'administrator' ? 'admin' : user.role;
     return (
@@ -91,7 +91,6 @@ export default function App() {
     );
   }
 
-  // ——— Auth screens ———
   return (
     <div className="auth-screen">
       <div className="auth-screen-inner">
@@ -148,6 +147,9 @@ export default function App() {
 function Welcome({ onLogin, onRegister }) {
   return (
     <section className="auth-card auth-welcome">
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <ThemeToggle />
+      </div>
       <span className="auth-eyebrow">SOUTH AFRICAN TRANSPORT PLATFORM</span>
       <h1 className="auth-h1">
         Travel information.
@@ -189,9 +191,9 @@ function Login({
   health,
   onRegister,
 }) {
-  const [ident, setIdent] = useState('passenger_demo');
-  const [password, setPassword] = useState('themba123');
-  const [activeRole, setActiveRole] = useState('passenger');
+  const [ident, setIdent] = useState('');
+  const [password, setPassword] = useState('');
+  const [activeRole, setActiveRole] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -215,20 +217,26 @@ function Login({
   }
 
   function pickRole(roleKey) {
+    // Selecting a role only highlights the active tab — it does not
+    // pre-fill any credentials.
     setActiveRole(roleKey);
-    const demo = DEMOS.find((d) => d.role === roleKey);
-    if (demo) {
-      setIdent(demo.ident);
-      setPassword('themba123');
-      setError('');
-    }
+    setError('');
   }
 
   return (
     <section className="auth-card auth-login">
-      <button className="auth-back" onClick={onBack} type="button">
-        ← Back
-      </button>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <button className="auth-back" onClick={onBack} type="button">
+          ← Back
+        </button>
+        <ThemeToggle />
+      </div>
 
       <span className="auth-eyebrow">SECURE ACCESS</span>
       <h1 className="auth-h1">Welcome back.</h1>
@@ -284,15 +292,13 @@ function Login({
         </button>
 
         <p className="auth-hint">
-          Demo password: <code>themba123</code>
           {health?.status && (
             <span
               style={{
-                marginLeft: 8,
                 color: health.status === 'ok' ? '#4ade80' : '#f87171',
               }}
             >
-              · API {health.status === 'ok' ? 'online' : 'offline'}
+              API {health.status === 'ok' ? 'online' : 'offline'}
             </span>
           )}
         </p>
@@ -413,9 +419,18 @@ function Register({
 
   return (
     <section className="auth-card auth-register">
-      <button className="auth-back" onClick={onBack} type="button">
-        ← Back
-      </button>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <button className="auth-back" onClick={onBack} type="button">
+          ← Back
+        </button>
+        <ThemeToggle />
+      </div>
 
       <span className="auth-eyebrow">ACCOUNT REGISTRATION</span>
       <h1 className="auth-h1">Join THEMBA.</h1>

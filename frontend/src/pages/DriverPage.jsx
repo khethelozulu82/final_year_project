@@ -4,23 +4,15 @@
  *   Stage 2: Selected trip map panel (route polyline, trip info, dot bar)
  *   Stage 3: Selected route point (sidebar list + floating point card)
  *
- * Auto-GPS: Live GPS starts automatically as soon as either:
- *   - the operator marks the trip as in_progress, OR
- *   - the trip's seats are full (seats_taken >= seat_capacity), OR
- *   - at least one passenger has boarded and the driver confirmed the trip.
- *
- * Live status: the driver console polls /api/trips/<id>/ every 6 s so the
- * status pill updates in real time as the operator advances or cancels the
- * trip.
- *
- * Route rendering:
- *   - Fetches road geometry via the routing service on trip open.
- *   - Shows the driver's own live GPS position as a green marker.
+ * Two top-level views:
+ *   - Dispatch (the original stage flow)
+ *   - History  (the driver's own audited actions)
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, getUser } from '../api';
 import { computeRoute } from '../services/routingApi';
 import ThembaMap from '../components/ThembaMap';
+import ThemeToggle from '../components/ThemeToggle.jsx';
 import '../styles/driverConsole.css';
 
 function fmtTime(t) {
@@ -127,7 +119,6 @@ export default function DriverPage({ notify, onExit }) {
   const [lastGps, setLastGps] = useState(null);
   const [passengerPickup, setPassengerPickup] = useState(null);
 
-  // Live status for the currently-selected trip
   const [liveStatus, setLiveStatus] = useState(null);
   const [statusUpdatedAt, setStatusUpdatedAt] = useState(null);
 
@@ -139,6 +130,11 @@ export default function DriverPage({ notify, onExit }) {
   const latestPos = useRef(null);
   const selectedTripRef = useRef(null);
   selectedTripRef.current = selectedTrip;
+
+  // Top-level view + history
+  const [view, setView] = useState('dispatch'); // 'dispatch' | 'history'
+  const [historyRows, setHistoryRows] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   async function refreshTrips() {
     try {
@@ -173,9 +169,18 @@ export default function DriverPage({ notify, onExit }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ============================================================
-  // AUTO-GPS: watch the selected trip for "should start tracking".
-  // ============================================================
+  // Load history when the tab is opened
+  useEffect(() => {
+    if (view !== 'history') return undefined;
+    setHistoryLoading(true);
+    api
+      .history()
+      .then((rows) => setHistoryRows(Array.isArray(rows) ? rows : []))
+      .catch(() => setHistoryRows([]))
+      .finally(() => setHistoryLoading(false));
+    return undefined;
+  }, [view]);
+
   useEffect(() => {
     if (!selectedTrip) return undefined;
 
@@ -231,9 +236,6 @@ export default function DriverPage({ notify, onExit }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTrip?.id, tracking]);
 
-  // ============================================================
-  // LIVE STATUS: poll the selected trip status every 6 s.
-  // ============================================================
   useEffect(() => {
     if (!selectedTrip) {
       setLiveStatus(null);
@@ -271,9 +273,6 @@ export default function DriverPage({ notify, onExit }) {
     };
   }, [selectedTrip?.id]);
 
-  // ============================================================
-  // Fetch the road geometry for the selected trip on the fly.
-  // ============================================================
   useEffect(() => {
     if (!selectedTrip) {
       setDriverRouteGeometry([]);
@@ -327,9 +326,6 @@ export default function DriverPage({ notify, onExit }) {
     };
   }, [selectedTrip?.id]);
 
-  // ============================================================
-  // Read the current position once on trip open.
-  // ============================================================
   useEffect(() => {
     if (!selectedTrip) return undefined;
     if (typeof navigator === 'undefined' || !navigator.geolocation) return undefined;
@@ -715,7 +711,8 @@ export default function DriverPage({ notify, onExit }) {
     return Math.round((selectedPoint.order / routePoints.length) * 100);
   }, [routePoints, selectedPoint, selectedTrip]);
 
-  // ---- Trip request panel ----
+  const unreadCount = (profile?.notifications || []).filter((n) => !n.read).length;
+
   if (rideRequestPanel) {
     const lat = Number(rideRequestPanel.passenger_lat);
     const lng = Number(rideRequestPanel.passenger_lng);
@@ -794,6 +791,105 @@ export default function DriverPage({ notify, onExit }) {
     );
   }
 
+  if (view === 'history') {
+    return (
+      <div className="drv-shell">
+        <header className="drv-topbar">
+          <div className="drv-brand">
+            <span className="drv-logo">FL</span>
+            <div>
+              <strong>FIELDLINE</strong>
+              <small>DRIVER CONSOLE</small>
+            </div>
+          </div>
+          <div className="drv-tabs" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              type="button"
+              className="drv-btn ghost"
+              style={{ padding: '6px 14px' }}
+              onClick={() => setView('dispatch')}
+            >
+              Dispatch
+            </button>
+            <button
+              type="button"
+              className="drv-btn primary"
+              style={{ padding: '6px 14px' }}
+              onClick={() => setView('history')}
+            >
+              History
+              {unreadCount > 0 && (
+                <span
+                  style={{
+                    marginLeft: 6,
+                    background: '#f59e0b',
+                    color: '#0b1210',
+                    borderRadius: 999,
+                    padding: '0 6px',
+                    fontSize: 11,
+                    fontWeight: 800,
+                  }}
+                >
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          </div>
+          <div className="drv-top-meta">
+            <ThemeToggle />
+            <span className="drv-user-chip">{driverName}</span>
+            {typeof onExit === 'function' && (
+              <button
+                type="button"
+                className="drv-btn ghost"
+                style={{ marginLeft: 8, padding: '6px 10px', fontSize: 12 }}
+                onClick={onExit}
+              >
+                Sign out
+              </button>
+            )}
+          </div>
+        </header>
+
+        <div className="drv-home">
+          <div className="drv-home-head">
+            <div>
+              <p className="drv-kicker">SHIFT LOG</p>
+              <h1>My history</h1>
+              <p className="drv-muted">
+                Actions you have performed in the system — trip confirms, GPS
+                starts, ride accepts, and other audited events.
+              </p>
+            </div>
+          </div>
+
+          <section className="drv-card">
+            {historyLoading && <p className="drv-muted">Loading…</p>}
+            {!historyLoading && historyRows.length === 0 && (
+              <p className="drv-muted">No recorded actions yet.</p>
+            )}
+            <ul className="drv-notif-list">
+              {historyRows.map((h) => (
+                <li key={h.id}>
+                  <small>
+                    {h.created_at
+                      ? new Date(h.created_at).toLocaleString()
+                      : ''}{' '}
+                    · {h.action}
+                  </small>
+                  <p>
+                    {h.entity_type} {h.entity_id}
+                    {h.detail ? ` — ${h.detail}` : ''}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   if (selectedTrip) {
     const from = selectedTrip.route?.departure?.name || '—';
     const to = selectedTrip.route?.destination?.name || '—';
@@ -814,8 +910,42 @@ export default function DriverPage({ notify, onExit }) {
               <small>LIVE ROUTE</small>
             </div>
           </div>
+          <div className="drv-tabs" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              type="button"
+              className="drv-btn ghost"
+              style={{ padding: '6px 14px' }}
+              onClick={() => setView('dispatch')}
+            >
+              Dispatch
+            </button>
+            <button
+              type="button"
+              className="drv-btn ghost"
+              style={{ padding: '6px 14px' }}
+              onClick={() => setView('history')}
+            >
+              History
+              {unreadCount > 0 && (
+                <span
+                  style={{
+                    marginLeft: 6,
+                    background: '#f59e0b',
+                    color: '#0b1210',
+                    borderRadius: 999,
+                    padding: '0 6px',
+                    fontSize: 11,
+                    fontWeight: 800,
+                  }}
+                >
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          </div>
           <div className="drv-top-meta">
             <span className="drv-live-dot" /> SYSTEM LIVE
+            <ThemeToggle />
             <span className="drv-user-chip">{driverName}</span>
             {typeof onExit === 'function' && (
               <button
@@ -1093,9 +1223,7 @@ export default function DriverPage({ notify, onExit }) {
     );
   }
 
-  /* ================= Stage 1 ================= */
-  const unreadCount = (profile?.notifications || []).filter((n) => !n.read).length;
-
+  /* ================= Stage 1 — Dispatch ================= */
   return (
     <div className="drv-shell">
       <header className="drv-topbar">
@@ -1106,8 +1234,44 @@ export default function DriverPage({ notify, onExit }) {
             <small>DRIVER CONSOLE</small>
           </div>
         </div>
+
+        <div className="drv-tabs" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            type="button"
+            className="drv-btn primary"
+            style={{ padding: '6px 14px' }}
+            onClick={() => setView('dispatch')}
+          >
+            Dispatch
+          </button>
+          <button
+            type="button"
+            className="drv-btn ghost"
+            style={{ padding: '6px 14px' }}
+            onClick={() => setView('history')}
+          >
+            History
+            {unreadCount > 0 && (
+              <span
+                style={{
+                  marginLeft: 6,
+                  background: '#f59e0b',
+                  color: '#0b1210',
+                  borderRadius: 999,
+                  padding: '0 6px',
+                  fontSize: 11,
+                  fontWeight: 800,
+                }}
+              >
+                {unreadCount}
+              </span>
+            )}
+          </button>
+        </div>
+
         <div className="drv-top-meta">
           <span className="drv-live-dot" /> SYSTEM LIVE
+          <ThemeToggle />
           <span className="drv-user-chip">{driverName}</span>
           {typeof onExit === 'function' && (
             <button

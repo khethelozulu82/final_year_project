@@ -256,14 +256,12 @@ code {
   position: relative;
 }
 
-/* Dark panels: dark base so the map never flashes white */
 .pmd-map-panel .themba-map,
 .drv-map-pane .themba-map,
 .drv-request-map .themba-map {
   background: #0a1016;
 }
 
-/* Error state keeps the pink background regardless of container */
 .themba-map-error {
   background: #fef2f2 !important;
 }
@@ -345,9 +343,7 @@ code {
 }
 
 /* ============================================================
-   Legacy auth-shell — kept so any older component that still
-   uses .auth-shell / .auth-panel / .role-picker continues to
-   render correctly. New screens use authPage.css instead.
+   Legacy auth-shell
    ============================================================ */
 .auth-shell {
   max-width: 440px;
@@ -501,4 +497,226 @@ code {
   .auth-shell h1 {
     font-size: 1.25rem;
   }
+}
+
+/* ============================================================
+   Global theme tokens — driven by <html data-theme="light|dark">
+   ============================================================ */
+:root {
+  --tt-bg: rgba(15, 23, 42, 0.6);
+  --tt-fg: #e2e8f0;
+  --tt-border: rgba(148, 163, 184, 0.35);
+}
+
+html[data-theme='light'] {
+  --tt-bg: #f1f5f9;
+  --tt-fg: #334155;
+  --tt-border: rgba(100, 116, 139, 0.35);
+
+  /* Auth — cream/paper tone instead of pure white */
+  --auth-bg: #f5efe7;
+  --auth-card: #fbf8f3;
+  --auth-fg: #1f2937;
+  --auth-sub: #64748b;
+  --auth-border: #e7e2d9;
+  --auth-input: #ffffff;
+  --auth-input-fg: #1f2937;
+  --auth-tab: #ece7dd;
+  --auth-tab-fg: #475569;
+  --auth-tab-active: #e6a841;
+  --auth-tab-active-fg: #1a1205;
+
+  /* Passenger */
+  --pmd-bg: #f2f4f8;
+  --pmd-fg: #1f2937;
+  --pmd-card: #fafbfd;
+  --pmd-border: #dfe4ea;
+  --pmd-muted: #6b7280;
+  --pmd-map-bg: #dfe4ea;
+
+  /* Driver */
+  --drv-bg: #f2f4f8;
+  --drv-fg: #1f2937;
+  --drv-card: #fafbfd;
+  --drv-border: #dfe4ea;
+  --drv-muted: #6b7280;
+
+  /* RankFlow */
+  --rf-bg: #f2f4f8;
+  --rf-fg: #1f2937;
+  --rf-nav: #f8fafc;
+  --rf-card: #fafbfd;
+  --rf-border: #dfe4ea;
+  --rf-muted: #6b7280;
+  --rf-pill-bg: #eef1f5;
+}
+
+/* ---- Auth screens ---- */
+html[data-theme='light'] .auth-screen {
+  background: var(--auth-bg);
+  color: var(--auth-fg);
+}
+html[data-theme='light'] .auth-card {
+  background: var(--auth-card);
+  border-color: var(--auth-border);
+  color: var(--auth-fg);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+html[data-theme='light'] .auth-back {
+  color: #64748b;
+}
+html[data-theme='light'] .auth-back:hover {
+  color: #1f2937;
+}
+html[data-theme='light'] .auth-h1 {
+  color: var(--auth-fg);
+}
+html[data-theme='light'] .auth-sub {
+  color: var(--auth-sub);
+}
+html[data-theme='light'] .auth-input {
+  background: var(--auth-input);
+  color: var(--auth-input-fg);
+  border-color: var(--auth-border);
+}
+html[data-theme='light'] .auth-tabs {
+  background: #f1f5f9;
+  border-color: var(--auth-border);
+}
+html[data-theme='light'] .auth-tab {
+  color: var(--auth-tab-fg);
+}
+html[data-theme='light'] .auth-tab.active {
+  background: var(--auth-tab-active);
+  color: var(--auth-tab-active-fg);
+}
+html[data-theme='light'] .auth-hint {
+  color: var(--auth-sub);
+}
+
+/* ---- Passenger dashboard ---- */
+html[data-theme='light'] .pmd {
+  background: var(--pmd-bg);
+  color: var(--pmd-fg);
+}
+html[data-theme='light'] .pmd-card,
+html[data-theme='light'] .pmd-map-panel {
+  background: var(--pmd-card);
+  border-color: var(--pmd-border);
+  color: var(--pmd-fg);
+}
+html[data-theme='light'] .pmd-topbar {
+  background: #ffffff;
+  border-color: var(--pmd-border);
+}
+html[data-theme='light'] .pmd-user-chip,
+html[data-theme='light'] .pmd-booking-row,
+html[data-theme='light'] .pmd-stat {
+  background: #f8fafc;
+  border-color: var(--pmd-border);
+}
+html[data-theme='light'] .pmd-muted,
+html[data-theme='light'] .pmd-hint,
+html[data-theme='light'] .pmd-kicker {
+  color: var(--pmd-muted);
+}
+html[data-theme='light'] .pmd-booking-row:hover {
+  background: #f1f5f9;
+}
+
+/* ---- Driver console ---- */
+html[data-theme='light'] .drv-shell {
+  background: var(--drv-bg);
+  color: var(--drv-fg);
+}
+html[data-theme='light'] .drv-card,
+html[data-theme='light'] .drv-side {
+  background: var(--drv-card);
+  border-color: var(--drv-border);
+  color: var(--drv-fg);
+}
+html[data-theme='light'] .drv-topbar,
+html[data-theme='light'] .drv-trip-header {
+  background: #ffffff;
+  border-color: var(--drv-border);
+}
+html[data-theme='light'] .drv-muted,
+html[data-theme='light'] .drv-kicker {
+  color: var(--drv-muted);
+}
+html[data-theme='light'] .drv-trip-row,
+html[data-theme='light'] .drv-notif-list li {
+  background: #f8fafc;
+  border-color: var(--drv-border);
+}
+
+/* ---- RankFlow admin + operator ---- */
+html[data-theme='light'] .rf-shell,
+html[data-theme='light'] .ro-shell {
+  background: var(--rf-bg);
+  color: var(--rf-fg);
+}
+html[data-theme='light'] .rf-nav,
+html[data-theme='light'] .ro-nav {
+  background: var(--rf-nav);
+  border-color: var(--rf-border);
+}
+html[data-theme='light'] .rf-nav button,
+html[data-theme='light'] .ro-nav button {
+  color: #334155;
+}
+html[data-theme='light'] .rf-nav button.active,
+html[data-theme='light'] .ro-nav button.active {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+html[data-theme='light'] .rf-card,
+html[data-theme='light'] .ro-card,
+html[data-theme='light'] .rf-stat,
+html[data-theme='light'] .ro-stat {
+  background: var(--rf-card);
+  border-color: var(--rf-border);
+  color: var(--rf-fg);
+}
+html[data-theme='light'] .rf-muted,
+html[data-theme='light'] .ro-muted {
+  color: var(--rf-muted);
+}
+html[data-theme='light'] .rf-table th,
+html[data-theme='light'] .rf-table td,
+html[data-theme='light'] .ro-table th,
+html[data-theme='light'] .ro-table td {
+  border-color: var(--rf-border);
+}
+html[data-theme='light'] .rf-pill,
+html[data-theme='light'] .ro-pill {
+  background: var(--rf-pill-bg);
+  color: #334155;
+}
+html[data-theme='light'] .rf-form input,
+html[data-theme='light'] .rf-form select,
+html[data-theme='light'] .rf-form textarea,
+html[data-theme='light'] .ro-form input,
+html[data-theme='light'] .ro-form select,
+html[data-theme='light'] .ro-form textarea {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: var(--rf-border);
+}
+html[data-theme='light'] .rf-btn.ghost,
+html[data-theme='light'] .ro-btn.ghost {
+  color: #334155;
+}
+html[data-theme='light'] .rf-nav button:hover,
+html[data-theme='light'] .ro-nav button:hover {
+  background: #e8edf3;
+}
+
+/* Subtle shadows on light cards */
+html[data-theme='light'] .pmd-card,
+html[data-theme='light'] .pmd-map-panel,
+html[data-theme='light'] .drv-card,
+html[data-theme='light'] .rf-card,
+html[data-theme='light'] .ro-card {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }

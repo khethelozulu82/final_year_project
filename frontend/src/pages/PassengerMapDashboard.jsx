@@ -2,12 +2,16 @@
  * Passenger hub UI — 3 stages: Desk → Route → Active.
  *
  * Key behaviors:
- *  - Completed trips auto-move from "My bookings" into "Archived trips".
- *  - Clicking an archived trip opens the Trip-info panel, where the
- *    "Rate driver" and "File complaint" buttons are enabled exactly
- *    once per trip (backend enforces uniqueness).
+ *  - Completed/cancelled trips auto-move from "My bookings" into "Archived trips"
+ *    via the parent trip's status (backend cascade also flips them, but the
+ *    frontend double-checks so the row moves as soon as the operator finishes).
+ *  - Clicking an archived trip opens the Trip-info panel, where Rate driver and
+ *    File complaint become enabled exactly once per trip.
  *  - Live status pill updates every 6 s while a trip is open.
  *  - Passenger History tab shows audits, complaints, and ratings.
+ *  - Vehicle plate + numeric ID shown in the Active panel (seeded from booking,
+ *    refreshed from live tracking when it arrives).
+ *  - ThemeToggle (light/dark) in the header.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { api, getUser } from '../api';
@@ -22,6 +26,7 @@ import {
   nearestRank,
 } from '../data/localFares';
 import { useGeolocation } from '../hooks/useGeolocation';
+import ThemeToggle from '../components/ThemeToggle.jsx';
 import '../styles/passengerMapDashboard.css';
 
 const PLACES = PREDETERMINED_PLACES;
@@ -108,7 +113,6 @@ export default function PassengerMapDashboard({ notify, onExit }) {
   const [nearestHint, setNearestHint] = useState(null);
   const [panicOpen, setPanicOpen] = useState(false);
 
-  // Feedback / complaint modals
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackScore, setFeedbackScore] = useState(5);
@@ -140,8 +144,7 @@ export default function PassengerMapDashboard({ notify, onExit }) {
   const [statusUpdatedAt, setStatusUpdatedAt] = useState(null);
   const [viewMode, setViewMode] = useState('desk');
 
-  // Desk vs History tab
-  const [deskTab, setDeskTab] = useState('desk'); // desk | history
+  const [deskTab, setDeskTab] = useState('desk');
   const [history, setHistory] = useState(null);
   const [historyLoading, setHistoryLoading] = useState(false);
 
@@ -162,14 +165,8 @@ export default function PassengerMapDashboard({ notify, onExit }) {
 
   // ─────────────────────────────────────────────────────────────
   // Sync active + archived bookings from the API.
-  //
-  // A booking is considered "archived" if:
-  //   - its own status is completed / cancelled / no_show, OR
-  //   - the parent trip's status is completed / cancelled / no_show
-  //
-  // The backend cascades the trip status onto bookings, but we also check
-  // the trip directly so the row moves to the archive the moment the
-  // operator completes the trip — even before the cascade commit lands.
+  // A booking is archived if its own status is terminal OR its
+  // parent trip's status is terminal.
   // ─────────────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
@@ -180,7 +177,6 @@ export default function PassengerMapDashboard({ notify, onExit }) {
         const all = await api.myBookings({ include: 'all' });
         if (cancelled || !Array.isArray(all)) return;
 
-        // Collect every distinct trip id referenced by a booking
         const tripIds = [
           ...new Set(
             all
@@ -193,7 +189,6 @@ export default function PassengerMapDashboard({ notify, onExit }) {
           ),
         ];
 
-        // Fetch the trip status for each (parallel, silent on failure)
         const tripStatusById = {};
         await Promise.all(
           tripIds.map(async (id) => {
@@ -218,14 +213,9 @@ export default function PassengerMapDashboard({ notify, onExit }) {
             TERMINAL.has(b.status) ||
             (tripStatus && TERMINAL.has(tripStatus));
 
-          // Enrich the row so the UI can show "Trip completed" instead of
-          // a stale booking status.
           const enriched = { ...b, trip_status: tripStatus };
-          if (isArchived) {
-            archived.push(enriched);
-          } else {
-            active.push(enriched);
-          }
+          if (isArchived) archived.push(enriched);
+          else active.push(enriched);
         }
 
         if (cancelled) return;
@@ -244,7 +234,6 @@ export default function PassengerMapDashboard({ notify, onExit }) {
     };
   }, [booked]);
 
-  // Poll personal notifications and refresh on cancellation
   useEffect(() => {
     const load = async () => {
       try {
@@ -275,7 +264,6 @@ export default function PassengerMapDashboard({ notify, onExit }) {
     return () => clearInterval(id);
   }, []);
 
-  // Global announcements
   useEffect(() => {
     const load = () =>
       api
@@ -287,7 +275,6 @@ export default function PassengerMapDashboard({ notify, onExit }) {
     return () => clearInterval(id);
   }, []);
 
-  // Load passenger history on demand
   useEffect(() => {
     if (deskTab !== 'history') return undefined;
     setHistoryLoading(true);
@@ -298,11 +285,6 @@ export default function PassengerMapDashboard({ notify, onExit }) {
       .finally(() => setHistoryLoading(false));
   }, [deskTab]);
 
-  // ─────────────────────────────────────────────────────────────
-  // Live status + review-status poller for the currently-open trip.
-  // Runs every 6 s and enables Rate / Complain the moment the
-  // operator flips the trip to completed.
-  // ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const tripId = liveTrip?.id || verifiedTrip?.raw?.id || booked?.trip_id;
     if (!tripId) {
@@ -486,11 +468,6 @@ export default function PassengerMapDashboard({ notify, onExit }) {
     }
   }
 
-  /**
-   * Opens the Active-trip panel from a booking row (active or archived).
-   * For archived (completed) trips the Rate / File-complaint buttons are
-   * shown inside the Trip-info card.
-   */
   async function openBookingDetails(b) {
     setSelectedBookingId(b.id);
     const tripId =
@@ -512,10 +489,15 @@ export default function PassengerMapDashboard({ notify, onExit }) {
       driver: b.driver_name || 'To be assigned',
       operator: b.operator_name || '—',
       departure: b.departure_date || '',
+      vehicle: b.vehicle_plate || undefined,
+      vehicle_id: b.vehicle_id || undefined,
+      registration: b.vehicle_plate || undefined,
       raw: {
         id: tripId,
         trip_code: b.trip_code,
         status: b.trip_status || b.status,
+        vehicle_id: b.vehicle_id,
+        vehicle_plate: b.vehicle_plate,
       },
     });
 
@@ -668,6 +650,9 @@ export default function PassengerMapDashboard({ notify, onExit }) {
         departure: [data.departure_date, data.expected_departure_time || '']
           .filter(Boolean)
           .join(' '),
+        vehicle: data.vehicle_plate || undefined,
+        vehicle_id: data.vehicle_id || undefined,
+        registration: data.vehicle_plate || undefined,
         raw: {
           id: tripId,
           trip_code: data.trip_code,
@@ -677,6 +662,8 @@ export default function PassengerMapDashboard({ notify, onExit }) {
           operator_name: data.operator_name,
           seat_capacity: data.seat_capacity,
           seats_taken: data.seats_taken,
+          vehicle_id: data.vehicle_id,
+          vehicle_plate: data.vehicle_plate,
         },
       });
       setSelectedBookingId(data.booking_id || data.id);
@@ -829,11 +816,11 @@ export default function PassengerMapDashboard({ notify, onExit }) {
         <span className="pmd-live-dot" /> IDENTITY VERIFIED
         <strong>{passengerName}</strong>
         <span className="pmd-avatar-sm">{initials}</span>
+        <ThemeToggle />
       </div>
     </header>
   );
 
-  /* ========== Active trip ========== */
   if (viewMode === 'active' && verifiedTrip) {
     const vt = verifiedTrip;
     const tripId = vt?.raw?.id || liveTrip?.id || booked?.trip_id;
@@ -886,11 +873,17 @@ export default function PassengerMapDashboard({ notify, onExit }) {
               <div className="pmd-trip-control">
                 <small>TRIP CONTROL</small>
                 <p>
-                  {liveTrip?.vehicle_plate
-                    ? `Vehicle ${liveTrip.vehicle_plate}`
-                    : vt.vehicle && vt.vehicle !== '—'
-                      ? `Vehicle ${vt.vehicle} ${vt.registration || ''}`.trim()
-                      : 'Awaiting vehicle GPS'}
+                  {liveTrip?.vehicle_plate || vt.vehicle_plate || vt.vehicle
+                    ? `Vehicle ${
+                        liveTrip?.vehicle_plate ||
+                        vt.vehicle_plate ||
+                        vt.vehicle
+                      }${
+                        vt.vehicle_id || liveTrip?.vehicle_id
+                          ? ` · ID ${vt.vehicle_id || liveTrip?.vehicle_id}`
+                          : ''
+                      }`
+                    : 'Awaiting vehicle'}
                   {liveTrip?.live_location
                     ? ' · live position on map'
                     : ' · waiting for driver GPS'}
@@ -925,7 +918,21 @@ export default function PassengerMapDashboard({ notify, onExit }) {
                   <div>
                     <dt>Vehicle</dt>
                     <dd>
-                      {vt.vehicle || '—'} {vt.registration || ''}
+                      {(() => {
+                        const plate =
+                          liveTrip?.vehicle_plate ||
+                          vt.vehicle_plate ||
+                          vt.vehicle ||
+                          null;
+                        const vid = vt.vehicle_id || liveTrip?.vehicle_id;
+                        if (!plate && !vid) return '—';
+                        return (
+                          <>
+                            {plate || '—'}
+                            {vid ? ` · ID ${vid}` : ''}
+                          </>
+                        );
+                      })()}
                     </dd>
                   </div>
                   <div>
@@ -1210,7 +1217,6 @@ export default function PassengerMapDashboard({ notify, onExit }) {
     );
   }
 
-  /* ========== Route preview ========== */
   if (viewMode === 'route') {
     return (
       <div className="pmd pmd-stage-route">
@@ -1344,7 +1350,6 @@ export default function PassengerMapDashboard({ notify, onExit }) {
     );
   }
 
-  /* ========== Desk + History ========== */
   return (
     <div className="pmd pmd-stage-desk">
       {brandHeader}
@@ -1643,6 +1648,9 @@ export default function PassengerMapDashboard({ notify, onExit }) {
                                 .replace(/_/g, ' ')}
                             </em>
                             {b.departure_date ? ` · ${b.departure_date}` : ''}
+                            {b.vehicle_plate
+                              ? ` · Vehicle ${b.vehicle_plate}`
+                              : ''}
                           </small>
                         </span>
                       </button>
