@@ -1,5 +1,5 @@
 """
-Single seed: Rank → Route(+geometry) → Vehicle → Trip → optional Booking.
+Single seed: Rank → Route(+geometry) → Vehicle.
 
 Creates:
   1. Associations (RankCode) — KDL001 / ESK001 / RBY001 / EMP001
@@ -13,11 +13,14 @@ Creates:
      Each account gets phone AND a constructed email so login works with either.
   5. Fallback demo accounts (password: themba123)
        passenger_demo / driver_demo / operator_demo / admin_demo
-  6. Vehicles, DriverVehicle link, today + tomorrow trips.
+  6. Six vehicles + DriverVehicle link for the demo driver.
+
+Does NOT create Trips or Bookings. Trips are scheduled from the admin console
+(Admin → Trips / Queue → Create trip, or POST /api/admin/trips/schedule/).
 
 Idempotent: safe to re-run.
 """
-from datetime import time, timedelta
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
@@ -77,6 +80,9 @@ def _safe_username_for(phone):
 class Command(BaseCommand):
     help = "Seed THEMBA demo + real-user data for multi-device testing"
 
+    # ------------------------------------------------------------------
+    # helpers
+    # ------------------------------------------------------------------
     def _upsert_real_user(self, phone, email, first, last, role):
         username = _safe_username_for(phone)
         email = (email or _safe_email_for(first, last, phone)).strip().lower()
@@ -126,10 +132,15 @@ class Command(BaseCommand):
         user.save()
         return user
 
+    # ------------------------------------------------------------------
+    # main
+    # ------------------------------------------------------------------
     def handle(self, *args, **options):
         self.stdout.write("Seeding THEMBA…")
 
+        # ----------------------------------------------------------------
         # 1. Associations
+        # ----------------------------------------------------------------
         codes = {}
         for code, name in [
             ("KDL001", "Kwa-Dlangezwa Taxi Association"),
@@ -147,7 +158,9 @@ class Command(BaseCommand):
             )
             codes[code] = rc
 
+        # ----------------------------------------------------------------
         # 2. Ranks + Destinations
+        # ----------------------------------------------------------------
         place_specs = [
             ("Ongoye", "King Cetshwayo", -28.854, 31.846),
             ("Empangeni", "King Cetshwayo", -28.7808, 31.8925),
@@ -167,7 +180,9 @@ class Command(BaseCommand):
             )
             dests[name] = d
 
+        # ----------------------------------------------------------------
         # 3. Routes + RouteStops
+        # ----------------------------------------------------------------
         route_specs = [
             ("TH-ONG-EMP", "Ongoye → Empangeni", "Ongoye", "Empangeni", 24, 18),
             ("TH-ONG-ESI", "Ongoye → Esikhawini", "Ongoye", "Esikhawini", 20, 15),
@@ -228,7 +243,9 @@ class Command(BaseCommand):
             },
         )
 
+        # ----------------------------------------------------------------
         # 4. REAL PASSENGERS
+        # ----------------------------------------------------------------
         for phone, first, last in [
             ("0821111111", "Sibusiso", "Dlamini"),
             ("0821111112", "Thandi",   "Mkhize"),
@@ -240,7 +257,9 @@ class Command(BaseCommand):
                 defaults={"next_of_kin_name": "", "next_of_kin_phone": ""},
             )
 
+        # ----------------------------------------------------------------
         # 5. REAL DRIVERS
+        # ----------------------------------------------------------------
         real_drivers = {}
         for i, (phone, first, last, assoc) in enumerate([
             ("0830000001", "Bongani", "Mthembu",  "KDL001"),
@@ -263,7 +282,9 @@ class Command(BaseCommand):
             )
             real_drivers[phone] = dp
 
+        # ----------------------------------------------------------------
         # 6. REAL OPERATORS
+        # ----------------------------------------------------------------
         real_operators = {}
         for phone, first, last, assoc, rank_names in [
             ("0820000003", "Nqobile", "Zondi",    "KDL001", ["Ongoye"]),
@@ -287,7 +308,9 @@ class Command(BaseCommand):
                 )
             real_operators[phone] = op
 
+        # ----------------------------------------------------------------
         # 7. REAL ADMINS
+        # ----------------------------------------------------------------
         for phone, first, last, rank_name in [
             ("0700000001", "Sizwe",  "Nkosi",    "Ongoye"),
             ("0700000002", "Andile", "Mabaso",   "Esikhawini"),
@@ -308,7 +331,9 @@ class Command(BaseCommand):
                 },
             )
 
+        # ----------------------------------------------------------------
         # 8. DEMO ACCOUNTS
+        # ----------------------------------------------------------------
         demo_passenger = self._upsert_demo_user(
             "passenger_demo", "0700001001", "passenger@themba.local",
             "passenger", "Sibusiso", "Dlamini",
@@ -363,59 +388,57 @@ class Command(BaseCommand):
                           "rank": ranks["Ongoye"]},
             )
 
-        # 9. Vehicles
-        v1, _ = Vehicle.objects.update_or_create(
-            plate_number="ND 123-456",
-            defaults={"make": "Toyota", "model": "Quantum",
-                      "seat_capacity": 15, "roadworthy": True,
-                      "status": Vehicle.Status.QUEUED},
-        )
-        v2, _ = Vehicle.objects.update_or_create(
-            plate_number="ND 345-678",
-            defaults={"make": "Toyota", "model": "Quantum",
-                      "seat_capacity": 15, "status": Vehicle.Status.QUEUED},
-        )
+        # ----------------------------------------------------------------
+        # 9. Vehicles + DriverVehicle links
+        # ----------------------------------------------------------------
+        # Six vehicles:
+        #   - 1 demo vehicle (assigned to demo_dp) — plate ND 123-456
+        #   - 5 more Quantums / NV350s with varied plates, seat capacities,
+        #     and makes so the admin Create-trip form has options for every
+        #     driver to work with.
+        vehicle_specs = [
+            # plate,           make,     model,               seats, roadworthy, status
+            ("ND 123-456",     "Toyota", "Quantum",             15, True,  Vehicle.Status.QUEUED),
+            ("ND 345-678",     "Toyota", "Quantum",             15, True,  Vehicle.Status.QUEUED),
+            ("ND 567-890",     "Toyota", "Quantum",             15, True,  Vehicle.Status.QUEUED),
+            ("ND 789-012",     "Toyota", "Quantum Ses'fikile",  22, True,  Vehicle.Status.QUEUED),
+            ("ND 901-234",     "Toyota", "Quantum",             15, True,  Vehicle.Status.QUEUED),
+            ("ND 234-567",     "Nissan", "NV350",               16, True,  Vehicle.Status.QUEUED),
+        ]
+
+        vehicles = {}
+        for plate, make, model, seats, roadworthy, status in vehicle_specs:
+            v, _ = Vehicle.objects.update_or_create(
+                plate_number=plate,
+                defaults={
+                    "make": make,
+                    "model": model,
+                    "seat_capacity": seats,
+                    "roadworthy": roadworthy,
+                    "status": status,
+                },
+            )
+            vehicles[plate] = v
+
+        # Demo driver gets the first vehicle (idempotent).
         if demo_dp:
-            DriverVehicle.objects.filter(driver=demo_dp, vehicle=v1).delete()
-            DriverVehicle.objects.create(driver=demo_dp, vehicle=v1, active=True)
+            v_demo = vehicles["ND 123-456"]
+            DriverVehicle.objects.filter(driver=demo_dp, vehicle=v_demo).delete()
+            DriverVehicle.objects.create(driver=demo_dp, vehicle=v_demo, active=True)
 
-        # 10. Trips
-        trip_operator = demo_op or next(iter(real_operators.values()), None)
-        trip_driver = demo_dp or next(iter(real_drivers.values()), None)
+        # ----------------------------------------------------------------
+        # 10. Trips — intentionally NOT created by the seed.
+        # ----------------------------------------------------------------
+        # Trips are scheduled from the admin console (Admin → Trips / Queue →
+        # Create trip, or POST /api/admin/trips/schedule/). This keeps the
+        # seeded database clean: no phantom trips, no phantom bookings, and
+        # no accidental overlap with real test data.
+        #
+        # Existing trips in the DB are left untouched.
 
-        today = timezone.localdate()
-        for code, route_code, t, vehicle, driver in [
-            ("TRP-ONG-EMP-01", "TH-ONG-EMP", time(8, 30), v1, trip_driver),
-            ("TRP-ONG-RB-01",  "TH-ONG-RB",  time(9, 0),  v2, None),
-            ("TRP-RB-EMP-01",  "TH-RB-EMP",  time(10, 0), None, None),
-        ]:
-            Trip.objects.update_or_create(
-                trip_code=code,
-                defaults={
-                    "operator": trip_operator,
-                    "route": routes[route_code],
-                    "departure_date": today,
-                    "expected_departure_time": t,
-                    "seat_capacity": 15,
-                    "status": Trip.Status.SCHEDULED,
-                    "vehicle": vehicle,
-                    "driver": driver,
-                },
-            )
-            Trip.objects.update_or_create(
-                trip_code=code + "-TMR",
-                defaults={
-                    "operator": trip_operator,
-                    "route": routes[route_code],
-                    "departure_date": today + timedelta(days=1),
-                    "expected_departure_time": t,
-                    "seat_capacity": 15,
-                    "status": Trip.Status.SCHEDULED,
-                    "vehicle": vehicle,
-                    "driver": driver,
-                },
-            )
-
+        # ----------------------------------------------------------------
+        # Summary
+        # ----------------------------------------------------------------
         self.stdout.write(self.style.SUCCESS(
             f"Done. Routes={Route.objects.count()} "
             f"Trips={Trip.objects.count()} "

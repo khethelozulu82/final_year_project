@@ -1,18 +1,18 @@
 /**
- * RankFlow Operations Console — admin dashboard (responsive, final).
- * Overview, Announcements, Complaints, Trips/Queue, Accounts, Drivers,
- * Safety, History, Panic alerts, Dev/Simulate.
+ * RankFlow Operations Console — admin dashboard.
  *
  * Schedule a trip:
  *   - Required: Route, Departure day, Driver, Vehicle
  *   - Optional: Operator (rank pool when blank), Expected time, Seat
  *     capacity, Notes
  *
- * Trip cancellation cascades: bookings become cancelled + notifications sent.
- * Create-trip form groups required fields first, optional ones under a divider.
+ * The Operator and Driver dropdowns are grouped so that accounts tied to the
+ * selected route's departure rank and association appear at the top of each
+ * list, under the heading "Same rank / association".
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, getUser } from '../api';
+import ThemeToggle from '../components/ThemeToggle.jsx';
 import '../styles/rankflowAdmin.css';
 
 const NAV = [
@@ -56,6 +56,15 @@ function fmt(t) {
   } catch {
     return String(t);
   }
+}
+
+function orderByRank(items, predicate) {
+  const matched = [];
+  const rest = [];
+  for (const it of items) {
+    (predicate(it) ? matched : rest).push(it);
+  }
+  return { matched, rest };
 }
 
 export default function RankFlowAdminPage({ notify, onExit }) {
@@ -192,6 +201,34 @@ export default function RankFlowAdminPage({ notify, onExit }) {
     loadHistory,
   ]);
 
+  const selectedRoute = (options.routes || []).find(
+    (r) => String(r.id) === String(tripForm.route_id)
+  );
+  const selectedRankId = selectedRoute?.departure_rank_id || null;
+
+  const operatorGroups = useMemo(() => {
+    if (!selectedRankId) return { matched: [], rest: options.operators || [] };
+    return orderByRank(options.operators || [], (op) =>
+      Array.isArray(op.rank_ids) && op.rank_ids.includes(selectedRankId)
+    );
+  }, [options.operators, selectedRankId]);
+
+  const rankAssociationIds = useMemo(() => {
+    const ids = new Set();
+    for (const op of operatorGroups.matched) {
+      if (op.association_id) ids.add(op.association_id);
+    }
+    return ids;
+  }, [operatorGroups.matched]);
+
+  const driverGroups = useMemo(() => {
+    if (rankAssociationIds.size === 0)
+      return { matched: [], rest: options.drivers || [] };
+    return orderByRank(options.drivers || [], (d) =>
+      d.association_id != null && rankAssociationIds.has(d.association_id)
+    );
+  }, [options.drivers, rankAssociationIds]);
+
   async function saveAnnouncement(e) {
     e?.preventDefault?.();
     if (!annForm.topic || !annForm.message) {
@@ -251,7 +288,6 @@ export default function RankFlowAdminPage({ notify, onExit }) {
   async function submitTrip(e) {
     e?.preventDefault?.();
 
-    // ----- Required field guards -----
     if (!tripForm.route_id) {
       notify?.('Route is required.');
       return;
@@ -448,6 +484,7 @@ export default function RankFlowAdminPage({ notify, onExit }) {
               {tab === 'dev' && 'DEV · Trip simulation'}
             </h1>
           </div>
+          <ThemeToggle />
         </div>
 
         {tab === 'overview' && (
@@ -763,7 +800,6 @@ export default function RankFlowAdminPage({ notify, onExit }) {
                   A verified driver and a vehicle must be assigned to every trip.
                 </p>
                 <form className="rf-form" onSubmit={submitTrip}>
-                  {/* ---------- REQUIRED ---------- */}
                   <div className="rf-form-section-label">
                     Required <span className="rf-required-mark">*</span>
                   </div>
@@ -814,11 +850,24 @@ export default function RankFlowAdminPage({ notify, onExit }) {
                       }
                     >
                       <option value="">Select driver</option>
-                      {(options.drivers || []).map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.label}
-                        </option>
-                      ))}
+                      {driverGroups.matched.length > 0 && (
+                        <optgroup label="Same rank / association">
+                          {driverGroups.matched.map((d) => (
+                            <option key={d.id} value={d.id}>
+                              {d.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {driverGroups.rest.length > 0 && (
+                        <optgroup label="Other verified drivers">
+                          {driverGroups.rest.map((d) => (
+                            <option key={d.id} value={d.id}>
+                              {d.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
                   </label>
 
@@ -843,7 +892,6 @@ export default function RankFlowAdminPage({ notify, onExit }) {
                     </select>
                   </label>
 
-                  {/* ---------- OPTIONAL ---------- */}
                   <div className="rf-form-section-label rf-span">
                     Optional
                     <span className="rf-form-section-hint">
@@ -866,11 +914,24 @@ export default function RankFlowAdminPage({ notify, onExit }) {
                       <option value="">
                         — Rank pool (any rank operator) —
                       </option>
-                      {(options.operators || []).map((o) => (
-                        <option key={o.id} value={o.id}>
-                          {o.label}
-                        </option>
-                      ))}
+                      {operatorGroups.matched.length > 0 && (
+                        <optgroup label="Same rank / association">
+                          {operatorGroups.matched.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      {operatorGroups.rest.length > 0 && (
+                        <optgroup label="Other operators">
+                          {operatorGroups.rest.map((o) => (
+                            <option key={o.id} value={o.id}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
                   </label>
 

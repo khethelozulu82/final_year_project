@@ -154,11 +154,9 @@ class TripSerializer(serializers.ModelSerializer):
 
 
 # ------------------------------------------------------------------
-# HARDENED BookingSerializer
-#
-# Every relation lookup is wrapped so a missing trip / route / driver /
-# operator / verification_code returns None instead of raising a 500.
-# Reverse OneToOne (verification_code) is queried defensively.
+# HARDENED BookingSerializer — now also exposes vehicle + trip status
+# so the passenger Active-trip panel can show the assigned vehicle
+# the moment the booking row is opened (before live tracking loads).
 # ------------------------------------------------------------------
 class BookingSerializer(serializers.ModelSerializer):
     display_name = serializers.CharField(read_only=True)
@@ -170,6 +168,9 @@ class BookingSerializer(serializers.ModelSerializer):
     departure_date = serializers.SerializerMethodField()
     driver_name = serializers.SerializerMethodField()
     operator_name = serializers.SerializerMethodField()
+    vehicle_id = serializers.SerializerMethodField()
+    vehicle_plate = serializers.SerializerMethodField()
+    trip_status = serializers.SerializerMethodField()
 
     class Meta:
         model = Booking
@@ -195,6 +196,9 @@ class BookingSerializer(serializers.ModelSerializer):
             "departure_date",
             "driver_name",
             "operator_name",
+            "vehicle_id",
+            "vehicle_plate",
+            "trip_status",
         ]
         read_only_fields = ["booked_at", "boarded_at"]
 
@@ -211,7 +215,6 @@ class BookingSerializer(serializers.ModelSerializer):
             return None
 
     def get_verification_code(self, obj):
-        # Reverse OneToOne may raise RelatedObjectDoesNotExist — catch it.
         try:
             vc = obj.verification_code
         except Exception:
@@ -254,10 +257,28 @@ class BookingSerializer(serializers.ModelSerializer):
         except Exception:
             return None
 
+    def get_vehicle_id(self, obj):
+        try:
+            return obj.trip.vehicle_id
+        except Exception:
+            return None
+
+    def get_vehicle_plate(self, obj):
+        try:
+            v = obj.trip.vehicle
+            return v.plate_number if v else None
+        except Exception:
+            return None
+
+    def get_trip_status(self, obj):
+        try:
+            return obj.trip.status
+        except Exception:
+            return None
+
 
 class BookingCreateSerializer(serializers.Serializer):
     trip_id = serializers.IntegerField()
-    # optional walk-in if not authenticated passenger self-book
 
 
 class PanicAlertSerializer(serializers.ModelSerializer):
@@ -327,11 +348,6 @@ class PassengerNotificationSerializer(serializers.ModelSerializer):
         model = PassengerNotification
         fields = ["id", "title", "body", "read", "created_at", "meta"]
         read_only_fields = ["created_at"]
-
-
-# ------------------------------------------------------------------
-# Driver complaint / rating serializers
-# ------------------------------------------------------------------
 
 
 class DriverComplaintSerializer(serializers.ModelSerializer):

@@ -1,20 +1,10 @@
 /**
  * RankFlow Operator Console — rank-scoped trip queue, confirm access,
  * register passenger, announcements, complaints, drivers, panic, history.
- *
- * Rank-scope rule: a trip's departure rank decides which operators see it.
- * Opening a trip requires confirming access ONCE. After that (or if the trip
- * is already boarding / in_progress), opening it skips the confirm panel and
- * jumps straight to the Trip Information view.
- *
- * Trip cancellation: "Cancel trip" releases engagement, cancels all bookings,
- * and notifies driver + passengers via the /my-trips/<id>/cancel/ endpoint.
- *
- * Walk-in registration: uses next-of-kin name + phone in place of mobile / ID
- * (per the updated backend contract — api_register_walk_in).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, getUser } from '../api';
+import ThemeToggle from '../components/ThemeToggle.jsx';
 import '../styles/rankflowOperator.css';
 
 const NAV = [
@@ -51,7 +41,6 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
   const [history, setHistory] = useState([]);
   const [busy, setBusy] = useState(false);
 
-  // Register-walk-in form: next-of-kin replaces mobile / ID
   const [regForm, setRegForm] = useState({
     first_name: '',
     surname: '',
@@ -151,10 +140,6 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
     return trips.filter((t) => String(t.status).toLowerCase() === statusFilter);
   }, [trips, statusFilter]);
 
-  /**
-   * Open a trip. If the trip is already engaged / boarding / in_progress,
-   * skip the confirm panel and jump straight to Trip Information.
-   */
   async function openTrip(t) {
     setShowRegister(false);
     setIssuedCode(null);
@@ -241,13 +226,6 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
     }
   }
 
-  /**
-   * Register a walk-in passenger.
-   * Backend expects:
-   *   first_name, surname, name,
-   *   next_of_kin_name, next_of_kin_phone
-   * (next-of-kin replaces mobile / ID on the walk-in record)
-   */
   async function registerPassenger(e) {
     e?.preventDefault?.();
     if (!activeTrip) return;
@@ -373,7 +351,6 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
     'Operator';
   const rankLabel = dash?.ranks?.[0]?.name || 'Assigned rank';
 
-  // ——— Confirm access screen ———
   if (pendingTrip) {
     const r = pendingTrip.route || {};
     const dep = r.departure?.name || r.departure_name || '—';
@@ -403,6 +380,15 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
           </div>
         </aside>
         <main className="ro-main">
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginBottom: 12,
+            }}
+          >
+            <ThemeToggle />
+          </div>
           <h1>Confirm trip access</h1>
           <div className="ro-card" style={{ maxWidth: 480, marginTop: 24 }}>
             <h3 style={{ marginTop: 0 }}>I&apos;m working this trip</h3>
@@ -460,7 +446,6 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
     );
   }
 
-  // ——— Trip information (after confirm) ———
   if (activeTrip && !showRegister) {
     const r = activeTrip.route || manifest?.route || {};
     const dep = r.departure?.name || '—';
@@ -496,17 +481,27 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
           </div>
         </aside>
         <main className="ro-main">
-          <button
-            type="button"
-            className="ro-btn ghost"
-            onClick={() => {
-              setActiveTrip(null);
-              setManifest(null);
-              setTab('queue');
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 12,
             }}
           >
-            ← Trip queue
-          </button>
+            <button
+              type="button"
+              className="ro-btn ghost"
+              onClick={() => {
+                setActiveTrip(null);
+                setManifest(null);
+                setTab('queue');
+              }}
+            >
+              ← Trip queue
+            </button>
+            <ThemeToggle />
+          </div>
           <h1>Trip information</h1>
           <div className="ro-banner">
             Trip access confirmed · {activeTrip.trip_code}
@@ -642,7 +637,6 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
     );
   }
 
-  // ——— Register passenger ———
   if (activeTrip && showRegister) {
     return (
       <div className="ro-shell">
@@ -662,13 +656,23 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
           ))}
         </aside>
         <main className="ro-main">
-          <button
-            type="button"
-            className="ro-btn ghost"
-            onClick={() => setShowRegister(false)}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 12,
+            }}
           >
-            ← Trip information
-          </button>
+            <button
+              type="button"
+              className="ro-btn ghost"
+              onClick={() => setShowRegister(false)}
+            >
+              ← Trip information
+            </button>
+            <ThemeToggle />
+          </div>
           <h1>Register passenger</h1>
           <p className="ro-muted">
             Walk-in passengers are recorded with a next-of-kin contact in place of
@@ -763,7 +767,6 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
     );
   }
 
-  // ——— Main shell ———
   return (
     <div className="ro-shell">
       <aside className="ro-nav">
@@ -802,14 +805,19 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
       </aside>
 
       <main className="ro-main">
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            marginBottom: 12,
+          }}
+        >
+          <ThemeToggle />
+        </div>
+
         {tab === 'dashboard' && (
           <>
             <h1>Good day, {user?.first_name || name}</h1>
-            <div className="ro-banner">
-              You are viewing operational data for your assigned rank(s). Other
-              ranks are restricted. Queue shows trips whose{' '}
-              <strong>departure point</strong> matches your rank.
-            </div>
             <div className="ro-stats">
               <div className="ro-stat">
                 <span>Trips today</span>
@@ -853,12 +861,6 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
         {tab === 'queue' && (
           <>
             <h1>Trip queue</h1>
-            <div className="ro-banner">
-              Only trips whose <strong>departure rank</strong> matches your
-              active association ranks are listed. Example: Esikhawini →
-              Ongoye is operated by Esikhawini operators; Ongoye → Esikhawini
-              by Ongoye operators.
-            </div>
             <div className="ro-actions" style={{ marginBottom: 12 }}>
               {['', 'scheduled', 'boarding', 'in_progress', 'cancelled'].map(
                 (s) => (
@@ -950,10 +952,6 @@ export default function RankFlowOperatorPage({ notify, onExit }) {
         {tab === 'announcements' && (
           <>
             <h1>Announcement manifest</h1>
-            <div className="ro-banner">
-              Showing announcements you may view, update, or deactivate
-              (rank/route scoped by admin).
-            </div>
             <div className="ro-card">
               {anns.length === 0 && (
                 <p className="ro-muted">No announcements.</p>
